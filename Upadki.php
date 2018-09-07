@@ -1,7 +1,7 @@
 <?php
 defined("_VALID_ACCESS") || die('Direct access forbidden');
  
-class tuczekontraktowe_tuczkontraktowy_Upadki extends RBO_Recordset {
+class tuczkontraktowy_Upadki extends RBO_Recordset {
  
     function table_name() { // - choose a name for the table that will be stored in EPESI database
  
@@ -12,8 +12,7 @@ class tuczekontraktowe_tuczkontraktowy_Upadki extends RBO_Recordset {
 
 
         // id kontraktu 
-        $contract_id = new RBO_Field_Select(_M("contract"));
-        $contract_id->from('kontrakty')->fields('farmer' ,'data_start');
+        $tucz_id = new RBO_Field_Integer(_M("ID tuczu"));
 
         //data upadku
         $date_fall = new RBO_Field_Date(_M("Date fall"));
@@ -24,10 +23,14 @@ class tuczekontraktowe_tuczkontraktowy_Upadki extends RBO_Recordset {
         $amount_fall->set_required()->set_visible();
 
         //waga padłych
-        $weight_fall = new RBO_Field_Currency(_M("weight fall"));
+        $weight_fall = new RBO_Field_Float(_M("weight fall"));
         $weight_fall->set_required()->set_visible();
 
-        return array($contract_id , $date_fall , $amount_fall , $weight_fall); // - remember to return all defined fields
+        //uwagi
+        $note = new RBO_Field_LongText(_M("Note"));
+        $note->set_visible();
+
+        return array($tucz_id , $date_fall , $amount_fall , $weight_fall,$note); // - remember to return all defined fields
  
  
     }

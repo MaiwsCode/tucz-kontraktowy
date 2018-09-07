@@ -1,0 +1,284 @@
+
+#_id_tuczu__data{
+    display: none;
+}
+#_fakt_poz__data{
+    display: none;
+}
+.input_value{
+    background-color:#F0F0F0;
+    border-radius:12px 12px;
+    padding-left:10px;
+}
+
+.ttable {
+    border-collapse: collapse;
+    width: 100%;
+    max-width: 100%;
+    margin-bottom: 1rem;
+    background: rgb(20,227,117);
+    background: linear-gradient(90deg, rgba(20,227,117,1) 0%, rgba(0,212,255,1) 100%);
+  font-weight: bold;    
+    font-size: 12px;
+  }
+  .ttable th,
+.ttable td {
+  padding: 0.75rem;
+  vertical-align: top;
+  border-top: 1px solid #dee2e6;
+}
+
+.ttable thead th {
+  vertical-align: bottom;
+  border-bottom: 2px solid #dee2e6;
+}
+
+.ttable tbody + tbody {
+  border-top: 2px solid #dee2e6;
+}
+
+.ttable .ttable {
+  background-color: #fff;
+}
+
+.ttable-sm th,
+.ttable-sm td {
+  padding: 0.3rem;
+}
+
+.ttable-bordered {
+  border: 1px solid #dee2e6;
+}
+
+.ttable-bordered th,
+.ttable-bordered td {
+  border: 1px solid #dee2e6;
+}
+
+.ttable-bordered thead th,
+.ttable-bordered thead td {
+  border-bottom-width: 2px;
+}
+
+.ttable-striped tbody tr:nth-of-type(odd) {
+  background-color: rgba(0, 0, 0, 0.05);
+}
+
+.ttable-hover tbody tr:hover {
+  background-color: rgba(0, 0, 0, 0.075);
+}
+
+.ttable-primary,
+.ttable-primary > th,
+.ttable-primary > td {
+  background-color: #b8daff;
+}
+
+.ttable-hover .ttable-primary:hover {
+  background-color: #9fcdff;
+}
+
+.ttable-hover .ttable-primary:hover > td,
+.ttable-hover .ttable-primary:hover > th {
+  background-color: #9fcdff;
+}
+
+.ttable-secondary,
+.ttable-secondary > th,
+.ttable-secondary > td {
+  background-color: #d6d8db;
+}
+
+.ttable-hover .ttable-secondary:hover {
+  background-color: #c8cbcf;
+}
+
+.ttable-hover .ttable-secondary:hover > td,
+.ttable-hover .ttable-secondary:hover > th {
+  background-color: #c8cbcf;
+}
+
+.ttable-success,
+.ttable-success > th,
+.ttable-success > td {
+  background-color: #c3e6cb;
+}
+
+.ttable-hover .ttable-success:hover {
+  background-color: #b1dfbb;
+}
+
+.ttable-hover .ttable-success:hover > td,
+.ttable-hover .ttable-success:hover > th {
+  background-color: #b1dfbb;
+}
+
+.ttable-info,
+.ttable-info > th,
+.ttable-info > td {
+  background-color: #bee5eb;
+}
+
+.ttable-hover .ttable-info:hover {
+  background-color: #abdde5;
+}
+
+.ttable-hover .ttable-info:hover > td,
+.ttable-hover .ttable-info:hover > th {
+  background-color: #abdde5;
+}
+
+.ttable-warning,
+.ttable-warning > th,
+.ttable-warning > td {
+  background-color: #ffeeba;
+}
+
+.ttable-hover .ttable-warning:hover {
+  background-color: #ffe8a1;
+}
+
+.ttable-hover .ttable-warning:hover > td,
+.ttable-hover .ttable-warning:hover > th {
+  background-color: #ffe8a1;
+}
+
+.ttable-danger,
+.ttable-danger > th,
+.ttable-danger > td {
+  background-color: #f5c6cb;
+}
+
+.ttable-hover .ttable-danger:hover {
+  background-color: #f1b0b7;
+}
+
+.ttable-hover .ttable-danger:hover > td,
+.ttable-hover .ttable-danger:hover > th {
+  background-color: #f1b0b7;
+}
+
+.ttable-light,
+.ttable-light > th,
+.ttable-light > td {
+  background-color: #fdfdfe;
+}
+
+.ttable-hover .ttable-light:hover {
+  background-color: #ececf6;
+}
+
+.ttable-hover .ttable-light:hover > td,
+.ttable-hover .ttable-light:hover > th {
+  background-color: #ececf6;
+}
+
+.ttable-dark,
+.ttable-dark > th,
+.ttable-dark > td {
+  background-color: #c6c8ca;
+}
+
+.ttable-hover .ttable-dark:hover {
+  background-color: #b9bbbe;
+}
+
+.ttable-hover .ttable-dark:hover > td,
+.ttable-hover .ttable-dark:hover > th {
+  background-color: #b9bbbe;
+}
+
+.ttable-active,
+.ttable-active > th,
+.ttable-active > td {
+  background-color: rgba(0, 0, 0, 0.075);
+}
+
+.ttable-hover .ttable-active:hover {
+  background-color: rgba(0, 0, 0, 0.075);
+}
+
+.ttable-hover .ttable-active:hover > td,
+.ttable-hover .ttable-active:hover > th {
+  background-color: rgba(0, 0, 0, 0.075);
+}
+
+.ttable .thead-dark th {
+  color: #fff;
+  background-color: #212529;
+  border-color: #32383e;
+}
+
+.ttable .thead-light th {
+  color: #495057;
+  background-color: #e9ecef;
+  border-color: #dee2e6;
+}
+
+.ttable-dark {
+  color: #fff;
+  background-color: #212529;
+}
+
+.ttable-dark th,
+.ttable-dark td,
+.ttable-dark thead th {
+  border-color: #32383e;
+}
+
+.ttable-dark.ttable-bordered {
+  border: 0;
+}
+
+.ttable-dark.ttable-striped tbody tr:nth-of-type(odd) {
+  background-color: rgba(255, 255, 255, 0.05);
+}
+
+.ttable-dark.ttable-hover tbody tr:hover {
+  background-color: rgba(255, 255, 255, 0.075);
+}
+
+
+.progress {
+  display: -ms-flexbox;
+  display: flex;
+  height: 1rem;
+  overflow: hidden;
+  font-size: 0.75rem;
+  background-color:#ffffff;
+  border-radius: 0.25rem;
+}
+
+.progress-bar {
+  display: -ms-flexbox;
+  display: flex;
+  -ms-flex-direction: column;
+  flex-direction: column;
+  -ms-flex-pack: center;
+  justify-content: center;
+  color: #fff;
+  text-align: center;
+  white-space: nowrap;
+  background-color: #007bff;
+  transition: width 0.6s ease;
+}
+
+@media screen and (prefers-reduced-motion: reduce) {
+  .progress-bar {
+    transition: none;
+  }
+}
+
+.progress-bar-striped {
+  background-image: linear-gradient(45deg, rgba(255, 255, 255, 0.15) 25%, transparent 25%, transparent 50%, rgba(255, 255, 255, 0.15) 50%, rgba(255, 255, 255, 0.15) 75%, transparent 75%, transparent);
+  background-size: 1rem 1rem;
+}
+
+.progress-bar-animated {
+  -webkit-animation: progress-bar-stripes 1s linear infinite;
+  animation: progress-bar-stripes 1s linear infinite;
+}
+
+
+
+
