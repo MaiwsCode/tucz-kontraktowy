@@ -446,17 +446,28 @@ class tuczkontraktowy extends Module {
                 $next_days[] = $days;
             }
             $fields = array();
-            $fields[0] = array('name'=> 'Nr świni', 'width' =>$width );
+            $fields[0] = array('name'=> 'Kolczyk ', 'width' =>$width );
             for($i=0;$i<count($daty);$i++){
                 $fields[] = array('name'=> $daty[$i][0] , 'width' =>$width );
             }
             $rbo = new RBO_RecordsetAccessor("kontrakty_wazenie");
+            $waga = $rbo->get_records(array('id_tuczu' => $record['id'] ),array(),array('pig_number'=> "DESC"));
+            $last = null;
+            foreach ($waga as $w){
+                $last = $w['pig_number'];
+                break;
+            }
             $waga = $rbo->get_records(array('id_tuczu' => $record['id'] ),array(),array('pig_number'=> "ASC"));
+            $first = null;
+            foreach ($waga as $w){
+                $first = $w['pig_number'];
+                break;
+            }
             $gb = &$this->init_module('Utils/GenericBrowser', null, 'Ważenie');
             $gb->set_table_columns(
                $fields
             );
-            for($i = 1;$i<=50;$i++){
+            for($i = $first;$i<= $last;$i++){
                 $row = array();
                 $row[] = $i;
 
@@ -491,50 +502,83 @@ class tuczkontraktowy extends Module {
             $this->display_module( $gb );
 
         }
-            $form = $this->init_module('Libs/QuickForm');
-            $form->addElement('date', 'data', 'Data' );
-            for($i = 1;$i<=50;$i++){
-                $form->addElement('text', 'pig_'.$i, 'Nr świni '.$i." <span style='text-align:right;right:0;'> WAGA: </span>");
-            }
-            $form->addElement('submit', 'submit', 'Dodaj');
-            print("<h3> Dodaj przeważenia </h3>");
-            $form->display_as_column();
-            print("<BR><BR><BR>");
-            if ($form->validate()){
-                $array_fields = $form->exportValues();
-                $date = $array_fields['data']['Y']."-".$array_fields['data']['M']."-".$array_fields['data']['d'];
-                for($i = 1;$i<=50;$i++){
-                    if(strlen($array_fields['pig_'.$i]) > 0){
-                        $id = $i;
-                        $tucz_id = $record['id'];
-                        $rec = Utils_RecordBrowserCommon::get_records("kontrakty_wazenie", 
-                            array('pig_number' => $id, 'date_weight' => $date, 'id_tuczu' => $tucz_id ));
-                        if(count($rec) > 0 ){
-                            foreach($rec as $r){
-                                $rec = $r;
-                                break;
-                            }
+        print("<input type='text' id='min' placeholder='Numer pierwszego kolczyka' /> <br>");
+        print("<input type='text' id='max' placeholder='Ilość kolczyków' /> <br>");
+        $basic_info = $this->create_href( array('min_range_pig_numbers'=>'0', 'max_range_pig_numbers'=>'0', 'next_step' => 'true') );
+        print("<a id='next_page' $basic_info >Dalej</a>");
+
+        if($_REQUEST['next_step']){
+            $_SESSION['min'] = $_REQUEST['min_range_pig_numbers'];
+            $_SESSION['max'] = $_REQUEST['max_range_pig_numbers'];
+        }
+        $min = $_SESSION['min'];
+        $max = $_SESSION['max'];
+        $form = $this->init_module('Libs/QuickForm');
+        $form->addElement('date', 'data', 'Data');
+        $form->setDefaults(array('data' => date("d-m-Y")));
+        for ($i = $min; $i <= $max; $i++) {
+            $form->addElement('text', 'pig_' . $i, 'Kolczyk ' . $i . " <span style='text-align:right;right:0;'></span>");
+        }
+        $form->addElement('submit', 'submit', 'Dodaj');
+        print("<h3> Dodaj przeważenia </h3>");
+        $form->display_as_column();
+        print("<BR><BR><BR>");
+        if ($form->validate()) {
+            $array_fields = $form->exportValues();
+            print_r($array_fields);
+            $date = $array_fields['data']['Y'] . "-" . $array_fields['data']['M'] . "-" . $array_fields['data']['d'];
+            for ($i = $min; $i <= $max; $i++) {
+                if (strlen($array_fields['pig_' . $i]) > 0) {
+                    $id = $i;
+                    $tucz_id = $record['id'];
+                    $rec = Utils_RecordBrowserCommon::get_records("kontrakty_wazenie",
+                        array('pig_number' => $id, 'date_weight' => $date, 'id_tuczu' => $tucz_id));
+                    if (count($rec) > 0) {
+                        foreach ($rec as $r) {
+                            $rec = $r;
+                            break;
                         }
-                        else{
-                            $rec = null;
-                        }     
-                        if($rec == null){
-                            Utils_RecordBrowserCommon::new_record("kontrakty_wazenie", 
-                            array('id_tuczu' => $tucz_id, 'pig_number' => $id ,
-                                'date_weight' => $date , 'weight' =>  $array_fields['pig_'.$i]));
-                        }else{
-                            Utils_RecordBrowserCommon::update_record("kontrakty_wazenie", $rec['id'],
-                            array('weight' =>  $array_fields['pig_'.$i]));
-                        }
+                    } else {
+                        $rec = null;
+                    }
+                    if ($rec == null) {
+                        Utils_RecordBrowserCommon::new_record("kontrakty_wazenie",
+                            array('id_tuczu' => $tucz_id, 'pig_number' => $id,
+                                'date_weight' => $date, 'weight' => $array_fields['pig_' . $i]));
+                    } else {
+                        Utils_RecordBrowserCommon::update_record("kontrakty_wazenie", $rec['id'],
+                            array('weight' => $array_fields['pig_' . $i]));
+                    }
                 }
             }
-            location();
+        location();
         }
+        Epesi::js('
+            jq("#max").on("input", function(){
+               var get_str = jq("#next_page").attr("onclick");
+               var finding_str  = get_str.split("&")[1];
+               var index_of_num = finding_str.indexOf("=");
+               var number = finding_str.substr(index_of_num+1,finding_str.length);
+               var append = "max_range_pig_numbers=" + jq("#max").val();
+               get_str = get_str.replace("max_range_pig_numbers="+number,append);
+               jq("#next_page").attr("onclick",get_str);
+               
+            });
+            jq("#min").on("input", function(){
+               var get_str = jq("#next_page").attr("onclick");
+               var finding_str = get_str.split("&")[0];
+               var index_of_num = finding_str.indexOf("=");
+               var number = finding_str.substr(index_of_num+1,finding_str.length);
+               var append = "min_range_pig_numbers=" + jq("#min").val();
+               get_str = get_str.replace("min_range_pig_numbers="+number,append);
+               jq("#next_page").attr("onclick",get_str);  
+            });
+       ');
         
     }
     public function plan($record){
         $help = "<ul style='text-align:left;'>";
-        $help .= "<li> Aby ustawić wartości domyślne dla pól należy wprowadzić wartości klikając u góry przycisk 'Utwórz nowy lub edytuj' </li></ul>";
+        $help .= "<li> Aby ustawić wartości domyślne dla pól należy wprowadzić wartości klikając u góry przycisk 'Ecycja założeń' </li></ul>";
         print($help);
         custom::create_new_faktura();
         custom::set_header("TUCZ - ".$record['name_number']);
@@ -559,7 +603,7 @@ class tuczkontraktowy extends Module {
         if($_id != "none"){
             Base_ActionBarCommon::add(
                 'add',
-                __('Utwórz nowy lub edytuj'), 
+                __('Edycja założeń'),
                 Utils_RecordBrowserCommon::create_record_href('kontrakty_zalozenia',$id=$_id,'edit'),
                 null,
                 $x
@@ -567,7 +611,7 @@ class tuczkontraktowy extends Module {
         }else{
             Base_ActionBarCommon::add(
                 'add',
-                __('Utwórz nowy lub edytuj'), 
+                __('Edycja założeń'),
                 Utils_RecordBrowserCommon::create_new_record_href('kontrakty_zalozenia',$def = array(), $id='none'),
                 null,
                 $x
@@ -658,6 +702,7 @@ class tuczkontraktowy extends Module {
 
             var feed_price = (parseFloat(st_amount) * parseFloat(st_price)) +  (parseFloat(gr_amount) * parseFloat(gr_price)) +  
             (parseFloat(fin_amount) * parseFloat(fin_price)) ;
+            var feed_price_not_avg = feed_price;
             feed_price = feed_price / (parseFloat(st_amount) + parseFloat(gr_amount) + parseFloat(fin_amount));
             jq("#price_feed").val(parseFloat(feed_price).toFixed(4).toString().replace(".",","));
 
@@ -666,7 +711,7 @@ class tuczkontraktowy extends Module {
             var medi = parseFloat(jq("#med").val());
             var lose = parseFloat(jq("#lose").val());
             var pig_price = parseFloat(jq("#price_pig").val());
-            var netto_price = (pig_price + (feed_price) / 2) / ( (100-lose)/100)  + farmer + medi + (feed_price / 2);
+            var netto_price = (pig_price + (feed_price_not_avg) / 2) / ( (100-lose)/100)  + farmer + medi + (feed_price_not_avg / 2);
             netto_price = parseFloat(netto_price).toFixed(2).toString().replace(".",",");
             jq("#price_netto").text(netto_price);
 

@@ -23,8 +23,8 @@ class tuczkontraktowy_Upadki extends RBO_Recordset {
         $amount_fall->set_required()->set_visible();
 
         //waga padłych
-        $weight_fall = new RBO_Field_Float(_M("weight fall"));
-        $weight_fall->set_required()->set_visible();
+        $weight_fall = new RBO_Field_Text(_M("weight fall"));
+        $weight_fall->set_required()->set_visible()->set_length(30);
 
         //uwagi
         $note = new RBO_Field_LongText(_M("Note"));

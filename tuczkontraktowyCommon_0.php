@@ -40,11 +40,14 @@ class tuczkontraktowyCommon extends ModuleCommon {
 		return array('label' => 'Założenia', 'show' => true);
 	}
 	public static function labelTucze() {
-		return array('label' => 'Dostawa', 'show' => true);
+		return array('label' => 'Warchlaki', 'show' => true);
 	}
 	public static function labelPasze() {
 		return array('label' => 'Pasze', 'show' => true);
 	}
+    public static function upadkiLabel() {
+        return array('label' => 'Upadki', 'show' => true);
+    }
 	public static function labelOdbiory() {
 		return array('label' => 'Odbiory', 'show' => true);
 	}
@@ -55,7 +58,7 @@ class tuczkontraktowyCommon extends ModuleCommon {
 		return array('label' => 'Limity', 'show' => true);
 	}
 	public static function labelTransporty() {
-		return array('label' => 'Sprzedaż', 'show' => true);
+		return array('label' => 'Transport', 'show' => true);
 	}
 	public static function labelExtra() {
 		return array('label' => 'Dodatkowe informacje', 'show' => true);
@@ -66,9 +69,6 @@ class tuczkontraktowyCommon extends ModuleCommon {
 	}
 	public static function labelPrzewaga() {
 		return array('label' => 'Przeważenie', 'show' => true);
-	}
-	public static function upadkiLabel() {
-		return array('label' => 'Upadki', 'show' => true);
 	}
 	public static function rolnikLabel() {
 		return array('label' => 'Raport Rolnik', 'show' => true);
@@ -221,52 +221,45 @@ class tuczkontraktowyCommon extends ModuleCommon {
 			}
 			if($record['price_starter'] == null){
 				$record['price_starter'] = $def['cena_starter'];
-			}else{
-				$start = $record['price_starter'];
-				preg_match('/([0-9]+\W+[0-9]+)/', $start, $return);
-				$start = $return[0];
-				$pos = strpos($start, ".");
-				$pos2 = strpos($start, ",");
-				if($pos || $pos2){
-					if($pos) $start[$pos] = ",";
-				}
-				else if(!is_numeric ($start)){
-					$start = '0';
-				}
-				$record['price_starter'] = $start;
-			}
+			}else {
+                $enter_value = $record['price_starter'];
+                $check_float = $enter_value;
+                $index = strpos($check_float,".");
+                if($index){
+                    $check_float[$index] = ",";
+                    $enter_value = $check_float;
+                }
+                $enter_value = preg_replace("/[^0-9 , . ]/", '', $enter_value);
+                $record['price_starter'] =  $enter_value;
+
+            }
 			if($record['price_grower'] == null){
 				$record['price_grower'] = $def['cena_grover'];
-			}else{
-				$start = $record['price_grower'];
-				preg_match('/([0-9]+\W+[0-9]+)/', $start, $return);
-				$start = $return[0];
-				$pos = strpos($start, ".");
-				$pos2 = strpos($start, ",");
-				if($pos || $pos2){
-					if($pos) $start[$pos] = ",";
-				}
-				else if(!is_numeric ($start)){
-					$start = '0';
-				}
-				$record['price_grower'] = $start;
-			}
+			}else {
+                $enter_value = $record['price_grower'];
+                $check_float = $enter_value;
+                $index = strpos($check_float,".");
+                if($index){
+                    $check_float[$index] = ",";
+                    $enter_value = $check_float;
+                }
+                $enter_value = preg_replace("/[^0-9 , . ]/", '', $enter_value);
+                $record['price_grower'] =  $enter_value;
+
+            }
 			if($record['price_finisher'] == null){
 				$record['price_finisher'] = $def['cena_finisher'];
-			}else{
-				$start = $record['price_finisher'];
-				preg_match('/([0-9]+\W+[0-9]+)/', $start, $return);
-				$start = $return[0];
-				$pos = strpos($start, ".");
-				$pos2 = strpos($start, ",");
-				if($pos || $pos2){
-					if($pos) $start[$pos] = ",";
-				}
-				else if(!is_numeric ($start)){
-					$start = '0';
-				}
-				$record['price_finisher'] = $start;
-			}
+			}else {
+                $enter_value = $record['price_finisher'];
+                $check_float = $enter_value;
+                $index = strpos($check_float,".");
+                if($index){
+                    $check_float[$index] = ",";
+                    $enter_value = $check_float;
+                }
+                $enter_value = preg_replace("/[^0-9 , . ]/", '', $enter_value);
+                $record['price_finisher'] =  $enter_value;
+            }
 			if($record['starter_to'] == null){
 				$record['starter_to'] = $feed['starter_grower'];
 			}
@@ -287,46 +280,37 @@ class tuczkontraktowyCommon extends ModuleCommon {
 			$p2 = $record['price_grower'];
 			$p3 = $record['price_finisher'];
 			if($record['price_starter'] != null){
-				$start = $record['price_starter'];
-				preg_match('/([0-9]+\W+[0-9]+)/', $start, $return);
-				$start = $return[0];
-				$pos = strpos($start, ".");
-				$pos2 = strpos($start, ",");
-				if($pos || $pos2){
-					if($pos) $start[$pos] = ",";
-				}
-				else if(!is_numeric ($start)){
-					$start = $def['cena_starter'];
-				}
-				$p1 = $start;
+                $enter_value = $p1;
+                $check_float = $enter_value;
+                $index = strpos($check_float,".");
+                if($index){
+                    $check_float[$index] = ",";
+                    $p1 = $check_float;
+                }
+                $enter_value = preg_replace("/[^0-9 , . ]/", '', $enter_value);
+                $p1 = $enter_value;
 			}
 			if($record['price_grower'] != null){
-				$start = $record['price_grower'];
-				preg_match('/([0-9]+\W+[0-9]+)/', $start, $return);
-				$start = $return[0];
-				$pos = strpos($start, ".");
-				$pos2 = strpos($start, ",");
-				if($pos || $pos2){
-					if($pos) $start[$pos] = ",";
-				}
-				else if(!is_numeric ($start)){
-					$start = $def['cena_grover'];
-				}
-				$p2 = $start;
+                $enter_value = $p2;
+                $check_float = $enter_value;
+                $index = strpos($check_float,".");
+                if($index){
+                    $check_float[$index] = ",";
+                    $p2 = $check_float;
+                }
+                $enter_value = preg_replace("/[^0-9 , . ]/", '', $enter_value);
+                $p2 = $enter_value;
 			}
 			if($record['price_finisher'] != null){
-				$start = $record['price_finisher'];
-				preg_match('/([0-9]+\W+[0-9]+)/', $start, $return);
-				$start = $return[0];
-				$pos = strpos($start, ".");
-				$pos2 = strpos($start, ",");
-				if($pos || $pos2){
-					if($pos) $start[$pos] = ",";
-				}
-				else if(!is_numeric ($start)){
-					$start = $def['cena_finisher'];
-				}
-				$p3 = $start;
+                $enter_value = $p3;
+                $check_float = $enter_value;
+                $index = strpos($check_float,".");
+                if($index){
+                    $check_float[$index] = ",";
+                    $p3 = $check_float;
+                }
+                $enter_value = preg_replace("/[^0-9 , . ]/", '', $enter_value);
+                $p3 = $enter_value;
 			}
 			Utils_RecordBrowserCommon::update_record('kontrakty_zalozenia', $record['id'], array('price_starter' => $p1, 'price_grower' => $p2 , 'price_finisher' => $p3), $full_update=false, $date=null, $dont_notify=false);
 		}

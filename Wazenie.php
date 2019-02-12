@@ -23,8 +23,8 @@ class tuczkontraktowy_Wazenie  extends RBO_Recordset {
         $pig_number->set_required()->set_visible();
 
         //waga na wazeniu
-        $weight = new RBO_Field_Float(_M("weight"));
-        $weight->set_required()->set_visible();
+        $weight = new RBO_Field_Text(_M("weight"));
+        $weight->set_required()->set_visible()->set_length(30);
 
         return array($tucz_id, $date_weight, $pig_number,$weight); // - remember to return all defined fields
  
