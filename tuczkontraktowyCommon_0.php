@@ -55,7 +55,7 @@ class tuczkontraktowyCommon extends ModuleCommon {
 		return array('label' => 'Inne', 'show' => true);
 	}
 	public static function limitsLabel() {
-		return array('label' => 'Limity', 'show' => true);
+		return array('label' => 'Limity', 'show' => false);
 	}
 	public static function labelTransporty() {
 		return array('label' => 'Transport', 'show' => true);
@@ -81,6 +81,9 @@ class tuczkontraktowyCommon extends ModuleCommon {
 			return array('label' => 'Raport Szefowa', 'show' => false);
 		}
 	}
+    public static function fakturyLabel() {
+        return array('label' => 'Powiązane faktury', 'show' => true);
+    }
 	public static function get_fv_ids($table_name, $tucz_id){
 		$rbo = new RBO_RecordsetAccessor($table_name);
 		$records = $rbo->get_records(array("id_tuczu" => $tucz_id),array(),array());
@@ -174,14 +177,15 @@ class tuczkontraktowyCommon extends ModuleCommon {
 		if($mode == "display"){
 			$_SESSION['tucz_id'] = $record['id'];
 
+
 		}
 		if($mode == 'added'){
-			if($record['data_end'] == null ){
+			/*if($record['data_end'] == null ){
 				$date_end = strtotime ( '+90 days' , strtotime ( $record['data_start'] ));
 				$date_end = date('Y-m-d', $date_end);				
 				Utils_RecordBrowserCommon::update_record("kontrakty", $record['id'],
 				array('data_end' =>  $date_end));
-			}
+			}*/
 		}
 		if($mode == 'adding'){
 				Epesi::js('jq(".name").html("");
@@ -325,60 +329,7 @@ class tuczkontraktowyCommon extends ModuleCommon {
 	}
 
 	public static function view_pasze($defaults, $mode){
-		/*if($mode == "adding"){
-			$defaults['id_tuczu'] = $_SESSION['tucz_id'];
-			$defaults['fakt_poz'] = $_SESSION['fakt_poz'];
-			//tuczkontraktowyCommon::hide_no_editable_fields();
-			return $defaults;
-		}
-		if($mode == 'added'){
-				$feeds = Utils_RecordBrowserCommon::get_records('kontrakty_faktury_dostawa_paszy',
-				array('feed_type' => $defaults['feed_type'] , 'id_tuczu' =>$_SESSION['tucz_id']),
-				array(),
-				array());
-				$ids = array();
-				foreach($feeds as $feed){
-					$ids[] = $feed['fakt_poz'];
-				}
-				$fvs = Utils_RecordBrowserCommon::get_records('kontrakty_faktury_pozycje',
-				array('id' => $ids),
-				array(),
-				array());
-				$ammount = 0;
-				foreach($fvs as $fv){
-					$ammount += $fv['amount'];
-				}
-				$limits = 0;
-				$last = Utils_RecordBrowserCommon::get_record('kontrakty_faktury_pozycje',$_SESSION['last_P']);
-				$last = $last['amount'];
-				$limit = Utils_RecordBrowserCommon::get_records('kontrakty_limity',
-				array('feed_type' => $defaults['feed_type'] , 'id_tuczu' =>$_SESSION['tucz_id']),array(),array());
-				foreach($limit as $l){
-					$limits += $l['amount'];
-				}
-				if($ammount > $limits && $limits > 0){
-					Utils_RecordBrowserCommon::delete_record('kontrakty_faktury_pozycje', $_SESSION['last_P']);
-					Utils_RecordBrowserCommon::delete_record('kontrakty_faktury_dostawa_paszy', $defaults['id']);
-					$ammount -= $last;
-					$diff = intval($limits) - intval($ammount);
-					if($diff < 0){
-						Epesi::alert("Przekroczono limit paszy. Nie można już więcej dodać ".$limits."/".$limits);
-					}else{
-						Epesi::alert("Dodawana ilość paszy jest zbyt duża. Max do dodania ".$diff." \n limit paszy:  ".$ammount."/".$limits);
-					}
 
-				}
-
-		}
-		if($mode == 'editing'){
-			//tuczkontraktowyCommon::hide_no_editable_fields();
-		}
-		if($mode == "display"){
-		//	tuczkontraktowyCommon::hide_no_editable_fields();
-		}
-		if($mode == 'view'){
-		//	tuczkontraktowyCommon::hide_no_editable_fields();
-		}*/
 	}
 	public static function view_warchlak($defaults, $mode){
 		if($mode == "display"){

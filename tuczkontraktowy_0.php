@@ -43,8 +43,11 @@ class tuczkontraktowy extends Module {
 					$we = $p['weight_on_drop'];
 					$ub = ($r['amount'] - $p['weight_on_drop'] ) / $p['amount'];
 				}
-			
-                $gb->add_row( $info->get_record($p['fakt_poz'])->create_default_linked_label(false,  false),
+			    $link = $info->get_record($p['fakt_poz'])->create_default_linked_label(false,  false);
+
+                $link = $info->get_record($p['fakt_poz'])->record_link(($r->description ?: "Brakuje opisu" )." ",false);
+
+                $gb->add_row( $link,
 							  $r['amount']." kg",
 							  $r->get_val('price'),
 							  $p->get_val('amount'),
@@ -64,10 +67,17 @@ class tuczkontraktowy extends Module {
         print($help);
         custom::set_header("TUCZ - ".$record['name_number']);
         custom::create_new_faktura();
+
+        //$_SESSION['display_current_name_view'] = "Limity";
+        custom::addButton("kontrakty_limity","Dodaj limity paszy","");
+        print('<a class="epesi_big_button" '.$this->create_callback_href(array($this,'limits_list'),array($record)).'>Wyświetl limity pasz</a><br><br>');
+
         $exist_types = [];
         $exist_amount = [];
         $price_avg = [];
         $feed_count  = [];
+        $cena = [];
+        $waga = [];
         $price_avg_weight = [];
         custom::addButton("kontrakty_faktury_pozycje","Dodaj dostawę paszy","P");
         $_SESSION['jedn'] = "j0";
@@ -80,8 +90,8 @@ class tuczkontraktowy extends Module {
             array(
                 array('name'=>'Pasza', 'width'=>10 ),
                 array('name'=>'Ilość', 'width'=>45),
-                array('name'=>'Cena', 'width'=>45),
-
+                array('name'=>'Cena netto', 'width'=>45),
+                array('name'=>'Cena jednostkowa', 'width'=>45)
             )
         );
         foreach($pasze as $p){
@@ -90,13 +100,17 @@ class tuczkontraktowy extends Module {
             $feed_count[$feed] += 1;
             $extra = $info->get_record($p['fakt_poz']);
             $exist_amount[$feed] += $extra['amount'];
-            $price_avg_weight[$feed] += ($extra['amount'] * floatval(str_replace(",",".",substr($extra['price'], 0, -3))));
+            $price = substr($extra['price'], 0, -3);
+            $price = custom::change_spearator($price,',','.');
+            $price_avg_weight[$feed] +=  floatval($price);
 
             $price_avg[$feed] += floatval(str_replace(",",".",substr($extra['price'], 0, -3)));
+
             $gb->add_row(
                 $info->get_record($p['fakt_poz'])->create_default_linked_label(false,  false)." - ".$p['feed_type'],
                 $extra['amount']." kg",
-                $extra->get_val('price')
+                $extra->get_val('price'),
+                custom::change_spearator( round(($price / $extra->amount),4),'.',',')." zł/kg"
             );
         }   
         $this->display_module( $gb );
@@ -104,22 +118,28 @@ class tuczkontraktowy extends Module {
         foreach ($exist_types as $type){
             $rbo_limits = new RBO_RecordsetAccessor("kontrakty_limity");
             $limits = $rbo_limits->get_records(array('id_tuczu' => $record['id'], 'feed_type' => $type),array(),array());
-            $price_avg[$type] = $price_avg[$type] / $feed_count[$type];
+
             $price_avg_weight[$type] = $price_avg_weight[$type] / $exist_amount[$type];
-            $price_avg_weight[$type] = round($price_avg_weight[$type], 4);
-            $price_avg[$type]  = str_replace(".","," ,$price_avg[$type]);
-            $price_avg_weight[$type] = str_replace(".","," ,$price_avg_weight[$type]);
+            $price_avg_weight[$type] = round($price_avg_weight[$type],4);
+            $price_avg_weight[$type] = custom::change_spearator($price_avg_weight[$type],'.','.');
+
+            $price_avg[$type] = $price_avg[$type] / $feed_count[$type];
+            $price_avg[$type] = round($price_avg[$type],4);
+            $price_avg[$type] = custom::change_spearator($price_avg[$type],'.','.');
+
+            //dane pod tabela
             print("<table style='background: rgb(255,255,255);
                     background: linear-gradient(252deg, rgba(255,255,255,1) 0%, rgba(244,244,244,0.5606617647058824) 0%,
                     rgba(255,255,255,0.7511379551820728) 100%);text-align:center;' class='ttable'>
                             <tr>
                                 <td>".ucfirst($type)."</td>
                                 <td> Średnia cena: ". $price_avg[$type] ." zł </td>
-                                <td> Średnia cena ważona: ".$price_avg_weight[$type]." </td>
+                                <td> Średnia cena ważona: ". number_format($price_avg_weight[$type],4,',',' '  )." zł/kg </td>
                             </tr>");
             foreach ($limits as $l){
                 print("<tr><td colspan='3'>".custom::createProgressBar(($exist_amount[$l['feed_type']]*100) / $l['amount'] )."</td></tr>");
-                print("<tr><td></td><td><h3>".$exist_amount[$l['feed_type']]. " / ".$l['amount']."</h3></td><td></td></tr>");
+                print("<tr><td></td><td><h3>Pobrano ".number_format($exist_amount[$l['feed_type']],0,","," ").
+                    " z ".number_format($l['amount'],0,',',' ')." kg limitu paszy</h3></td><td></td></tr>");
             }
             print("</table>");
         }
@@ -224,7 +244,7 @@ class tuczkontraktowy extends Module {
         print("<table style='background: rgb(255,255,255);
                     background: linear-gradient(252deg, rgba(255,255,255,1) 0%, rgba(244,244,244,0.5606617647058824) 0%,
                     rgba(255,255,255,0.7511379551820728) 100%);text-align:center;width:60%;' class='ttable'>");
-        print("<tr><td>Suma oddanych</td><td> Różnica </td> <td> Średnia waga oddanej sztuki </td><td> Średnia wydajność </td></tr>");
+        print("<tr><td>Suma oddanych</td><td> Pozostaje na stanie </td> <td> Średnia waga oddanej sztuki </td><td> Średnia wydajność </td></tr>");
         print("<tr><td> $recived </td><td> $difference </td> <td> ".$f1." </td><td> ". $f2 ." </td></tr>");
         print("</table>");
 
@@ -242,7 +262,7 @@ class tuczkontraktowy extends Module {
         custom::set_header("TUCZ - ".$record['name_number']);
         custom::create_new_faktura();
         $_SESSION['display_current_name_view'] = "Inne faktury";
-        custom::addButton("kontrakty_faktury_pozycje","Dodaj szczegóły","");
+        custom::addButton("kontrakty_faktury_pozycje","Dodaj szczegóły","OTH");
       //  $_SESSION['adding_type'] = 'inne';
 
         $rbo = new RBO_RecordsetAccessor("kontrakty_inne");
@@ -256,7 +276,7 @@ class tuczkontraktowy extends Module {
             array(
                 array('name'=>'Inne', 'width'=>25),
                 array('name'=>'Typ', 'width'=>25),
-                array('name'=>'Cena', 'width'=>25),
+                array('name'=>'Cena jednostkowa', 'width'=>25),
                 array('name'=>'Ilość', 'width'=>25),
             )
         );
@@ -267,10 +287,12 @@ class tuczkontraktowy extends Module {
         foreach($inne as $p){
             $extra = $info->get_record($p['fakt_poz']);
             $types[$p['other_type']]['name'] = $p->get_val('other_type');
-            $types[$p['other_type']]['price'] += (floatval(str_replace(",",".",substr($extra['price'], 0, -3)))) * $extra['amount'];
-            $gb->add_row( $info->get_record($p['fakt_poz'])->create_default_linked_label(false,  false),
+            $types[$p['other_type']]['price'] += (floatval(str_replace(",",".",substr($extra['price'], 0, -3))));
+            $desc = "";
+            if($p->description){$desc = $p->description;} else{ $desc =  "Brakuje opisu";};
+            $gb->add_row( $info->get_record($p['fakt_poz'])->record_link($extra->description ?: "Brakuje opisu",  false),
                 $p->get_val('other_type'),
-                $extra->get_val("price"),
+                number_format($extra->price / $extra->amount,2,","," ")." zł" ,
                 $extra['amount']
                 );
         
@@ -283,6 +305,7 @@ class tuczkontraktowy extends Module {
         foreach($types as $type){
             if($pigs_amount > 0) {
                 $per_one = $type['price'] / $pigs_amount;
+                $per_one = round($per_one,4);
                 $per_one .= " zł";
                 $per_one = str_replace(".",",",$per_one);
             }else{
@@ -367,6 +390,7 @@ class tuczkontraktowy extends Module {
             }
         }
     }
+
     public function przewaga_view($record){
         $help = "<ul style='text-align:left;'>";
         $help .= "<li> W tym miejscu dodajemy kontrolne przeważania</li>
@@ -381,16 +405,31 @@ class tuczkontraktowy extends Module {
             $gb = &$this->init_module('Utils/GenericBrowser', null, 'Ważenie');
             $gb->set_table_columns(
                 array(
-                    array('name'=>'Ważenia', 'width'=>30),
-                    array('name'=>'Ile dni później', 'width'=>30),
+                    array('name'=> 'Ważenia', 'width'=>30),
+                    array('name'=> 'Ile dni później', 'width'=>30),
+                    array('name'=> 'Średni przyrost', 'width'=>30)
                 )
             );
             for($i=0;$i<count($daty);$i++){
+                $waga_before = $rbo->get_records(array('id_tuczu' => $record['id'] ,'date_weight' => $daty[$i-1][0] ),array(),array('pig_number'=> "ASC"));
+                $waga = $rbo->get_records(array('id_tuczu' => $record['id'] ,'date_weight' => $daty[$i][0] ),array(),array('pig_number'=> "ASC"));
+                $avg_grow = 0;
+                foreach ($waga as $pig){
+                    foreach ($waga_before as $before){
+                        if($before->pig_number == $pig->pig_number){
+                            $diffrence = custom::change_spearator($pig->weight, "," , "." ) - custom::change_spearator($before->weight, "," , "." );
+                            $avg_grow  +=  $diffrence;
+                            break;
+                        }
+                    }
+                }
+                $avg_grow = $avg_grow / count($waga);
                 if($i<1){
                     $gb->add_row(   
                     "<a style='margin-left:10px;' ". 
                         $this->create_href ( array ('action' => 'view_record' , 
-                                                    'wazenie' => $daty[$i][0])) .">". $daty[$i][0] ."</a>", '---'
+                                                    'wazenie' => $daty[$i][0])) .">". $daty[$i][0] ."</a>", '---' ,
+                                                    '---'
                     );
                 }else{
                     $now = $daty[$i][0];
@@ -399,13 +438,14 @@ class tuczkontraktowy extends Module {
                     $days= floor($days/(60*60*24));
                     $gb->add_row(   
                         "<a style='margin-left:10px;' ". 
-                            $this->create_href ( array ( 'action' => 'view_record', 'wazenie' => $daty[$i][0])) .">". $daty[$i][0] ."</a>", ($days )
+                            $this->create_href ( array ( 'action' => 'view_record', 'wazenie' => $daty[$i][0])) .">". $daty[$i][0] ."</a>", ($days ),
+                        custom::change_spearator(round($avg_grow,4),'.',',')." kg"
 
                         );
                 }
             }
             $gb->add_row(   
-                "<a  style='margin-left:10px;'". $this->create_href ( array ('action' => 'view_all')) ."> Zestawienie wszystkich przeważeń </a>", ''
+                "<a  style='margin-left:10px;'". $this->create_href ( array ('action' => 'view_all')) ."> Zestawienie wszystkich przeważeń </a>", '',""
             );
             $this->display_module( $gb );
         if($_REQUEST['action'] == 'view_record'){
@@ -502,10 +542,12 @@ class tuczkontraktowy extends Module {
             $this->display_module( $gb );
 
         }
-        print("<input type='text' id='min' placeholder='Numer pierwszego kolczyka' /> <br>");
-        print("<input type='text' id='max' placeholder='Ilość kolczyków' /> <br>");
+        print("<div style='width:80%;'>");
+        print("<input type='text' style='width:30%;border-radius:6px 6px;' id='min' placeholder='Numer pierwszego kolczyka' /> <br>");
+        print("<input type='text' style='width:30%;border-radius:6px 6px;' id='max' placeholder='Numer ostatniego kolczyka' /> <br>");
+        print("</div>");
         $basic_info = $this->create_href( array('min_range_pig_numbers'=>'0', 'max_range_pig_numbers'=>'0', 'next_step' => 'true') );
-        print("<a id='next_page' $basic_info >Dalej</a>");
+        print("<br><a class='epesi_big_button' id='next_page' $basic_info >Dalej</a><br>");
 
         if($_REQUEST['next_step']){
             $_SESSION['min'] = $_REQUEST['min_range_pig_numbers'];
@@ -514,14 +556,16 @@ class tuczkontraktowy extends Module {
         $min = $_SESSION['min'];
         $max = $_SESSION['max'];
         $form = $this->init_module('Libs/QuickForm');
-        $form->addElement('date', 'data', 'Data');
-        $form->setDefaults(array('data' => date("d-m-Y")));
-        for ($i = $min; $i <= $max; $i++) {
-            $form->addElement('text', 'pig_' . $i, 'Kolczyk ' . $i . " <span style='text-align:right;right:0;'></span>");
+        if($min) {
+            $form->addElement('date', 'data', 'Data');
+            $form->setDefaults(array('data' => date("d-m-Y")));
+            for ($i = $min; $i <= $max; $i++) {
+                $form->addElement('text', 'pig_' . $i, 'Kolczyk ' . $i . " <span style='text-align:right;right:0;'></span>");
+            }
+            $form->addElement('submit', 'submit', 'Dodaj');
+            print("<h3> Dodaj przeważenia </h3>");
+            $form->display_as_column();
         }
-        $form->addElement('submit', 'submit', 'Dodaj');
-        print("<h3> Dodaj przeważenia </h3>");
-        $form->display_as_column();
         print("<BR><BR><BR>");
         if ($form->validate()) {
             $array_fields = $form->exportValues();
@@ -576,9 +620,11 @@ class tuczkontraktowy extends Module {
        ');
         
     }
+
     public function plan($record){
+        $form = & $this->init_module('Libs/QuickForm');
         $help = "<ul style='text-align:left;'>";
-        $help .= "<li> Aby ustawić wartości domyślne dla pól należy wprowadzić wartości klikając u góry przycisk 'Ecycja założeń' </li></ul>";
+        $help .= "<li> Aby ustawić wartości domyślne dla pól należy wprowadzić wartości klikając u góry przycisk 'Edycja założeń' </li></ul>";
         print($help);
         custom::create_new_faktura();
         custom::set_header("TUCZ - ".$record['name_number']);
@@ -592,6 +638,7 @@ class tuczkontraktowy extends Module {
 
         $zal = Utils_RecordBrowserCommon::get_records("kontrakty_zalozenia", array('id_tuczu' => $record['id']));
         if($zal != Null){
+
             foreach($zal as $z){
                 $zal = $z;
                 $_id = $zal['id'];
@@ -648,8 +695,82 @@ class tuczkontraktowy extends Module {
         $record['waga_przy_wstawieniu'] = substr($record['waga_przy_wstawieniu'], 0, -3);
         $theme->assign("amount",$amount);
         $theme->assign("tucz",$record);
+
+        //form
+        $form->addElement('text', 'szt','', array('class' => "input_value",
+                                                'id' => 'szt',
+                                                'value' => $zal['planned_amount'] ?: 0 ));
+
+        $form->addElement('text','weight_start','',array('class' => "input_value",
+                                                         'id'=> 'weight_start' ,
+                                                         'value' => $zal['weight_pig_start'] ?: 0 ));
+
+        $form->addElement('text','weight_end','',array('class' => "input_value",
+                                                        'id'=> 'weight_end' ,
+                                                        'value' => $zal['weight_pig_end'] ?: 0 ));
+        $form->addRule('szt', 'Tylko liczby całkowite', 'numeric');
+
+        $form->addElement('text','price_st','',array('class' => "input_value",
+                                                     'id'=> 'price_st' ,
+                                                     'value' => $zal['price_starter'] ?: 0 ));
+
+        $form->addElement('text','price_gr','',array('class' => "input_value",
+                                                     'id'=> 'price_gr' ,
+                                                     'value' => $zal['price_grower'] ?: 0 ));
+
+        $form->addElement('text','price_fin','',array('class' => "input_value",
+                                                      'id'=> 'price_fin' ,
+                                                      'value' => $zal['price_finisher'] ?: 0 ));
+
+        $form->addElement('text','price_pig','',array('class' => "input_value",
+                                                      'id'=> 'price_pig' ,
+                                                      'value' => $zal['price_pig'] ?: 0 ));
+
+        $form->addElement('text','price_feed','',array('class' => "input_value",
+                                                       'id'=> 'price_feed' ,
+                                                       'value' => 0 ));
+
+        $form->addElement('text','med','',array('class' => "input_value",
+                                                'id'=> 'med' ,
+                                                'value' => $zal['med'] ?: '10,0' ));
+
+        $form->addElement('text','lose','',array('class' => "input_value",
+                                                 'id'=> 'lose' ,
+                                                 'value' => $zal['lose'] ?: '3' ));
+
+        $form->addElement('text','farmer','',array('class' => "input_value",
+                                                   'id'=> 'farmer' ,
+                                                   'value' => $zal['farmer'] ?: '10,0' ));
+
+        $form->addElement('submit', 'save', 'Zapisz zmiany założeń', array('class' => 'epesi_big_button' , 'style' => "position:fixed;left:0;bottom:35%;") );
+        $form->toHtml();
+
+        $form->assign_theme('my_form', $theme);
+
         $theme->assign("zalozenie",$zal);
         $theme->display();
+        if ($form->validate_with_message("Zmiany zapisane", "Musisz podać odpowidni typ danych w polach")) {
+            $array_fields = $form->exportValues();
+            $zal['planned_amount'] = intval($array_fields['szt']);
+            $zal['weight_pig_start'] = ($array_fields['weight_start']);
+            $zal['weight_pig_end'] = ($array_fields['weight_end']);
+            $zal['price_starter'] = $array_fields['price_st'];
+            $zal['price_grower'] = $array_fields['price_gr'];
+            $zal['price_finisher'] = $array_fields['price_fin'];
+            $zal['price_pig'] = $array_fields['price_pig']."__2";
+            $zal['med'] = $array_fields['med']."__2";
+            $zal['lose'] = custom::change_spearator($array_fields['lose'],',','.');
+            $zal['farmer'] = $array_fields['farmer']."__2";
+            $zal['id_tuczu'] = $record['id'];
+
+            if(Utils_RecordBrowserCommon::get_records("kontrakty_zalozenia", array('id_tuczu' => $record['id']))){
+                Utils_RecordBrowserCommon::update_record("kontrakty_zalozenia", $_id, $zal);
+            }else {
+                Utils_RecordBrowserCommon::new_record("kontrakty_zalozenia", $zal);
+            }
+
+        }
+
         Epesi::js('
         function calc(){
             //starter
@@ -665,7 +786,7 @@ class tuczkontraktowy extends Module {
 	
 			//starter
             var from = parseInt(jq("#st_to").val());
-            var to = parseInt(jq("#weight_start").val());
+            var to = parseFloat(jq("#weight_start").val().toString().replace(",","."));
             var ret1 = (from-to) * jq("#st_mp").val();
             ret1 = parseFloat(ret1).toFixed(4);
             jq("#feed_st").children("span").text(ret1);
@@ -678,7 +799,7 @@ class tuczkontraktowy extends Module {
             jq("#feed_grow").children("span").text(ret2);
 
             //finisher 
-            var from = parseInt(jq("#weight_end").val());
+            var from = parseFloat(jq("#weight_end").val().toString().replace(",","."));
             var to = parseInt(jq("#fin_from").val());
             var ret3 = (from-to) * jq("#fin_mp").val();
             ret3 = parseFloat(ret3).toFixed(4);
@@ -716,7 +837,7 @@ class tuczkontraktowy extends Module {
             jq("#price_netto").text(netto_price);
 
             //min cena tucznika
-            var wyj = (netto_price).toString().replace(",",".") / parseInt(jq("#weight_end").val());
+            var wyj = (netto_price).toString().replace(",",".") / parseFloat(jq("#weight_end").val().toString().replace(",","."));
             var wbc = wyj / 0.78;
             jq("#wbc").text(parseFloat(wbc).toFixed(2).toString().replace(".",",") );
             jq("#price_netto_per_one").text(parseFloat(wyj).toFixed(2).toString().replace(".",",") );
@@ -747,7 +868,7 @@ class tuczkontraktowy extends Module {
     public function limits_list($record){
         $help = "<ul style='text-align:left;'>";
         $help .= "<li> W tym miejscu dodajemy limity pasz</li></ul>";
-        print($help);
+        //print($help);
         custom::create_new_faktura();
         custom::set_header("TUCZ - ".$record['name_number']);
         $_SESSION['display_current_name_view'] = "Limity";
@@ -772,6 +893,7 @@ class tuczkontraktowy extends Module {
         }
         $this->display_module( $gb );
     }
+
     public function upadki_list($record){
         $help = "<ul style='text-align:left;'>";
         $help .= "<li> W tym miejscu dodajemy upadki podczas tuczu</li></ul>";
@@ -798,9 +920,78 @@ class tuczkontraktowy extends Module {
         }
         $this->display_module( $gb );
     }
-    public function pozycje($record){
-    
+
+    public function pozycje($record){}
+
+    public function faktury_list($record){
+
+        $help = "<ul style='text-align:left;'>";
+        $help .= "<li> Zestawienie wszystkich faktur dla tuczu</li></ul>";
+        print($help);
+        custom::set_header("TUCZ - ".$record['name_number']);
+        custom::create_new_faktura();
+
+        $gb = &$this->init_module('Utils/GenericBrowser', null, 'Pasze');
+        $gb->set_table_columns(
+            array(
+                array('name'=>'Opis', 'width'=>20 ),
+                array('name'=>'Kwota', 'width'=>20),
+                array('name'=>'Dostawca', 'width'=>20),
+                array('name'=>'Nr faktury', 'width'=>20),
+                array('name'=>'Data', 'width'=>20)
+            )
+        );
+        $tables_names = ['kontrakty_faktury_dostawa_warchlaka', 'kontrakty_faktury_dostawa_paszy',
+            'kontrakty_inne' , 'kontrakty_faktury_odbior_tucznika'];
+        $ids_list = [];
+        for($i = 0;$i<count($tables_names);$i++){
+            $rbo  = new RBO_RecordsetAccessor($tables_names[$i]);
+            $ids = $rbo->get_records(array('id_tuczu' => $record['id']),array(),array());
+            foreach($ids as $id){
+                $ids_list[] = $id->fakt_poz;
+            }
+        }
+
+        $fvs_poz  = new RBO_RecordsetAccessor("kontrakty_faktury_pozycje");
+        $fvs_poz_list = $fvs_poz->get_records(array('id'=>$ids_list),array(),array());
+        $ids_list = [];
+        $price = [];
+        foreach($fvs_poz_list as $fv_id){
+            $ids_list[] = $fv_id->faktura;
+            $price[$fv_id->faktura] += $fv_id->price;
+        }
+
+        $fvs  = new RBO_RecordsetAccessor("kontrakty_faktury");
+        $fvs_list = $fvs->get_records(array('id'=>$ids_list),array(),array("Typ faktury"=> "DESC"));
+
+        foreach ($fvs_list as $id) {
+            $gb->add_row(
+                '',
+                number_format($price[$id->id],2,',',' ' ). " zł",
+                $id->record_link($id->get_val('company')),
+                $id->create_default_linked_label(false,false),
+                $id->record_link($id->get_val('date'))
+            );
+
+        }
+        /*
+        $tabbed_browser = & $this->init_module('Utils/TabbedBrowser');
+        $tabbed_browser->start_tab( 'Zakup' );
+        print 'Lista faktur zakupowych';
+        $tabbed_browser->end_tab();
+        $tabbed_browser->start_tab( 'Transport' );
+        print 'Lista faktur transportowych';
+        $tabbed_browser->end_tab();
+        $tabbed_browser->start_tab( 'Sprzedaż' );
+
+        print 'Lista faktur sprzedażowych';
+        $tabbed_browser->end_tab();
+
+        $this->display_module( $tabbed_browser );*/
+        $this->display_module( $gb );
+
     }
+
     public function raport_rolnik($record){
         $help = "<ul style='text-align:left;'>";
         $help .= "<li> W tym miejscu mamy wygenerowany raport dla rolinka. Należy pamiętać ze nie będzie on dobrze wyliczony 
@@ -815,6 +1006,7 @@ class tuczkontraktowy extends Module {
         $theme->assign("details", $details);
         $theme->display('raport_rolnik');
     }
+
     public function raport_szefowa($record){
         $help = "<ul style='text-align:left;'>";
         $help .= "<li> W tym miejscu mamy wygenerowany raport dla szefowej. Należy pamiętać ze nie będzie on dobrze wyliczony 
@@ -848,6 +1040,7 @@ class tuczkontraktowy extends Module {
                 5
             );
     }
+
     public function settings(){
     }    
 
@@ -862,7 +1055,18 @@ class custom{
                 </div>';
         return $bar;
     }
-    
+    /**
+     *
+     * @param String $value   value to edit
+     * @param String $from char to find and replace -> $to
+     * @param String $to value will be returned with this separator
+     */
+    public static function change_spearator($value,$from,$to){
+        $value = str_replace($from,$to,$value);
+        return $value;
+    }
+
+
     
     public static function addButton($table,$title_text,$_def){
         Base_ActionBarCommon::add(

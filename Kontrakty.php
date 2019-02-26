@@ -14,9 +14,10 @@ class tuczkontraktowy_Kontrakty  extends RBO_Recordset {
         $data_start = new RBO_Field_Date(_M("Data start"));
         $data_start->set_required()->set_visible();
 
-        //data zakonczenia / zabrania tuczu -> koniec tuczu
-        $data_end = new RBO_Field_Date(_M("Data end"));
-        $data_end->set_visible();
+        //data zakonczenia / zabrania tuczu -> koniec
+        // tuczu moze wrócic to pole
+        //$data_end = new RBO_Field_Date(_M("Data end"));
+        //$data_end->set_visible();
 
         //hodowca -> rolnik
         $farmer = new RBO_Field_Select(_M('farmer'));
@@ -38,7 +39,7 @@ class tuczkontraktowy_Kontrakty  extends RBO_Recordset {
         $status = new RBO_Field_CommonData(_M("status"));
         $status->from('Kontrakty/status')->set_required()->set_visible();
 
-        return array($data_start,$data_end,$farmer,
+        return array($data_start,$farmer,
         $note,$kolczyk,$name,$status); // - remember to return all defined fields
  
  

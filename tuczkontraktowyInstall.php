@@ -58,6 +58,10 @@ class tuczkontraktowyInstall extends ModuleInstall {
         Utils_RecordBrowserCommon::new_addon('kontrakty', $this->get_type(), 'pasze_list',
             array($this->get_type() . 'Common', 'labelPasze'));
 
+        //upadki
+        Utils_RecordBrowserCommon::new_addon('kontrakty', $this->get_type(), 'upadki_list',
+            array($this->get_type() . 'Common', 'upadkiLabel'));
+
         //
         Utils_RecordBrowserCommon::new_addon('kontrakty', $this->get_type(), 'odbiory_list',
             array($this->get_type() . 'Common', 'labelOdbiory'));
@@ -79,21 +83,22 @@ class tuczkontraktowyInstall extends ModuleInstall {
         Utils_RecordBrowserCommon::new_addon('kontrakty', $this->get_type(), 'transporty_view',
             array($this->get_type() . 'Common', 'labelTransporty'));
 
-        //upadki
-        Utils_RecordBrowserCommon::new_addon('kontrakty', $this->get_type(), 'upadki_list',
-        array($this->get_type() . 'Common', 'upadkiLabel'));
         
         //limity
         Utils_RecordBrowserCommon::new_addon('kontrakty', $this->get_type(), 'limits_list',
         array($this->get_type() . 'Common', 'limitsLabel'));
 
-        //limity
+        //raport rolnik
         Utils_RecordBrowserCommon::new_addon('kontrakty', $this->get_type(), 'raport_rolnik',
                 array($this->get_type() . 'Common', 'rolnikLabel'));
 
-        //limity
+        //raport szefowa
         Utils_RecordBrowserCommon::new_addon('kontrakty', $this->get_type(), 'raport_szefowa',
             array($this->get_type() . 'Common', 'szefowaLabel'));
+
+        //raport faktury
+        Utils_RecordBrowserCommon::new_addon('kontrakty', $this->get_type(), 'faktury_list',
+            array($this->get_type() . 'Common', 'fakturyLabel'));
         //    
         Utils_RecordBrowserCommon::register_processing_callback('kontrakty_faktury_pozycje', 
                             array($this->get_type () . 'Common', 'on_add_details'));

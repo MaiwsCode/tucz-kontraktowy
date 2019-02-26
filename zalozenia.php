@@ -15,12 +15,12 @@ class tuczkontraktowy_zalozenia  extends RBO_Recordset {
      $tucz_id = new RBO_Field_Integer(_M("id tuczu"));
 
      //Waga wstawienia warchlaka
-     $weight_pig_start = new RBO_Field_Float(_M("weight pig start"));
-     $weight_pig_start->set_visible();
+     $weight_pig_start = new RBO_Field_Text(_M("weight pig start"));
+     $weight_pig_start->set_visible()->set_length(30);
 
      //Oczekiwana waga wyjściowa 
-     $weight_pig_end = new RBO_Field_Float(_M("weight pig end"));
-     $weight_pig_end->set_visible();
+     $weight_pig_end = new RBO_Field_Text(_M("weight pig end"));
+     $weight_pig_end->set_visible()->set_length(30);
 
      //Starter
      $price_st = new RBO_Field_Text(_M("price starter"));

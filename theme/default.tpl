@@ -1,3 +1,4 @@
+{$my_form_open}
 
 <div style='position:relative;'>
     <div style='position:absolute;top:15%;'>
@@ -6,6 +7,7 @@
 </div>
 <br>
 <div style='text-align:center;min-width:100%;max-width:100%;'>
+
 <h1 style='text-align:center;'>ZAŁOŻENIA</h1>
 </div>
 <br>
@@ -19,9 +21,9 @@
     </tr>
     <tr>				
         <td> {$tucz.farmer}	 </td>
-        <td> {$tucz.data_start}</td> 
-        <td>   </td>
-        <td> <input type='text' id='szt' value='{$zalozenie.planned_amount}' class='input_value' /> </td>
+        <td> {$tucz.data_start}</td>
+        <td> </td>
+        <td> {$my_form_data.szt.html}  </td>
         <td> {$tucz.kolczyk} </td>
     </tr>
 </table>
@@ -29,67 +31,45 @@
 <table class="ttable ttable-hover ttable-bordered" style="margin-top:15px;margin-bottom:15px;user-select: text;width:60%;">
     <tr>
         <td> Waga wstawienia warchlaka  </td>
-        <td>  
-        {if $zalozenie.weight_pig_start}
-            <input type='text' id='weight_start' class='input_value' value='{$zalozenie.weight_pig_start}' /> 
-         {else}
-            <input type='text' id='weight_start' class='input_value' value='0' /> 
-         {/if}
-         kg </td>
+        <td>
+            {$my_form_data.weight_start.html}
+
+            kg </td>
     </tr>
     <tr>
         <td> Oczekiwana waga wyjściowa  </td>
-        <td> 
-        {if $zalozenie.weight_pig_end}
-            <input type='text' value='{$zalozenie.weight_pig_end}' id='weight_end' class='input_value' /> 
-        {else}
-             <input type='text' value='0' id='weight_end' class='input_value' /> 
-        {/if}   
-        kg </td>
+        <td>
+            {$my_form_data.weight_end.html}
+
+            kg </td>
     </tr>
     <tr>
         <td > Starter </td>
-        <td> 
-        {if $zalozenie.price_starter}
-            <input type='text' class='input_value' id='price_st' value='{$zalozenie.price_starter|replace:'.':','}' /> 
-        {else}
-            <input type='text' class='input_value' id='price_st' value='0' />
-        {/if}
+        <td>
+            {$my_form_data.price_st.html}
         zł/kg </td>
     </tr>
     <tr>
         <td> Grower	</td>
-        <td> 
-        {if $zalozenie.price_grower}
-            <input type='text' class='input_value' id='price_gr'  value='{$zalozenie.price_grower|replace:'.':','}' /> 
-        {else}
-            <input type='text' class='input_value' id='price_gr'  value='0' />        
-        {/if}
+        <td>
+            {$my_form_data.price_gr.html}
         zł/kg </td>
     </tr>
     <tr>
         <td> Finisher </td>
-        <td> 
-        {if $zalozenie.price_finisher}
-            <input type='text' class='input_value' id='price_fin'  value='{$zalozenie.price_finisher|replace:'.':','}' />
-        {else}
-            <input type='text' class='input_value' id='price_fin'  value='0' />
-        {/if} 
+        <td>
+            {$my_form_data.price_fin.html}
          zł/kg </td>
     </tr>
     <tr>
         <td> Cena warchlaka </td>
-        <td> 
-        {if $zalozenie.price_pig}
-            <input type='text' id='price_pig' value='{$zalozenie.price_pig|replace:'.':','}' class='input_value' /> 
-        {else}
-            <input type='text' id='price_pig' value='0' class='input_value' /> 
-        {/if}
+        <td>
+            {$my_form_data.price_pig.html}
         zł/sztukę </td>
     </tr>
     <tr>
         <td> Średnia ważona cena paszy </td>
-        <td> <input type='text' id='price_feed' value='0' class='input_value' /> zł/kg </td>
+        <td> {$my_form_data.price_feed.html} zł/kg </td>
     </tr>
 </table>
 
@@ -186,32 +166,20 @@
 <table class="ttable ttable-hover ttable-bordered" style="margin-top:15px;margin-bottom:15px;user-select: text;width:60%;">
     <tr>
         <td> Lekarstwa </td>
-        <td> 
-        {if $zalozenie.med}
-            <input type='text' id='med' value='{$zalozenie.med|replace:'.':','}' class='input_value' /> 
-        {else}
-            <input type='text' id='med' value='10' class='input_value' /> 
-        {/if}
+        <td>
+            {$my_form_data.med.html}
         zł</td>
     </tr>
     <tr>
         <td> Ubytki </td>
-        <td> 
-        {if $zalozenie.lose}
-            <input id='lose' type='text' value='{$zalozenie.lose}' class='input_value' /> 
-        {else}
-            <input id='lose' type='text' value='3' class='input_value' /> 
-        {/if}
+        <td>
+            {$my_form_data.lose.html}
         %</td>
     </tr>
     <tr>
         <td> Rolnik </td>
-        <td> 
-        {if $zalozenie.farmer}
-            <input type='text' id='farmer' value='{$zalozenie.farmer|replace:'.':','}' class='input_value' /> 
-        {else}
-            <input type='text' id='farmer' value='37' class='input_value' /> 
-        {/if}
+        <td>
+            {$my_form_data.farmer.html}
             zł </td>
     </tr>
     <tr>
@@ -246,3 +214,6 @@
         <td id='fin_kontr'> </td>
     </tr> 
 </table>
+{$my_form_data.save.html}
+
+{$my_form_close}
