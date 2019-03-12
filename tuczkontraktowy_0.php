@@ -1,5 +1,6 @@
 <?php
 defined("_VALID_ACCESS") || die('Direct access forbidden');
+use Silverslice\DocxTemplate\Template;
 /* 
  * To change this license header, choose License Headers in Project Properties.
  * To change this template file, choose Tools | Templates
@@ -61,6 +62,143 @@ class tuczkontraktowy extends Module {
     }
 
     public function pasze_list($record){
+        if($_REQUEST['generate']){
+
+            require_once 'Template.php';
+
+            $template = new Template();
+
+            $template->open(__DIR__.'/harmonogramy/template.docx');
+
+            $zal = Utils_RecordBrowserCommon::get_records("kontrakty_zalozenia", array('id_tuczu' => $record['id']));
+            foreach ($zal as $z){$zal = $z;break;}
+            $farmer =  Utils_RecordBrowserCommon::get_record("company", $record['farmer']);
+            $rbo_limits = new RBO_RecordsetAccessor('kontrakty_limity');
+            $limits = $rbo_limits->get_records( array('id_tuczu' => $record['id']),array(),array());
+            $all_limits = 0;
+            $starter = 0;
+            $grower = 0;
+            $finisher = 0;
+            foreach($limits as $limit){
+                $all_limits += $limit->amount;
+                $starter = ($limit->feed_type == 'starter' ? $starter = $limit->amount : $starter);
+                $grower = ($limit->feed_type == 'grower' ? $grower = $limit->amount : $grower);
+                $finisher = ($limit->feed_type == 'finisher' ? $finisher = $limit->amount : $finisher);
+            }
+            $full_address = $farmer["address_1"].", ".$farmer["postal_code"]." ".$farmer["city"]."  ";
+            $end_date =  strtotime($record['data_start']);
+            $end_date += (90 * 24*60*60);
+            $end_date = date("Y-m-d", $end_date);
+            $template->replace('date', $record['data_start']);
+            $template->replace('amount', $zal['planned_amount']);
+            $template->replace('weight', $zal['weight_pig_start']);
+            $template->replace('who',  $farmer["company_name"]);
+            $template->replace('where', $full_address);
+            $template->replace('from', $record['data_start']);
+            $template->replace('to', $end_date);
+            $template->replace('how_many',  number_format($all_limits ,"0",","," "));
+            $template->replace('starter', number_format($starter,"0",","," "));
+            $template->replace('grower', number_format($grower,"0",","," "));
+            $template->replace('finisher', number_format($finisher,"0",","," "));
+            $template->replace('koncentrat', '0');
+            $template->replace('paid_day', $end_date);
+            $template->save((__DIR__.'/harmonogramy/'.$record['data_start'].'_'.$farmer['company_name'].'.docx'));
+
+            Epesi::redirect($_SERVER['document_root'].'/modules/tuczkontraktowy/harmonogramy/'.$record['data_start'].'_'.$farmer['company_name'].'.docx');
+            unlink($_SERVER['document_root'].'/modules/tuczkontraktowy/harmonogramy/harmonogram_'.$record['data_start'].'_'.$farmer['company_name'].'.docx');
+        }
+        if($_REQUEST['limits'] == true){
+
+            $yes ='<span class="hide"><a class="epesi_big_button" '.$this->create_href ( array ('confirmed' => 'true')).'>Tak</a></span>';
+            $no = '<span class="hide"><a class="epesi_big_button" '.$this->create_href ( array ("confirmed"=> "false")).'>Nie</a></span>';
+            print("<div id=\"myModal\" class=\"modal\">               
+                <!-- Modal content -->
+                <div class=\"modal-content\">
+                 <span class=\"close\">&times;</span>
+                 <h1>Czy na pewno zmienić istniejące limity paszy ?</h1><br>
+                <p>".$yes." ".$no."</p></div></div>");
+
+            epesi::js('// Get the modal
+                        var modal = jq("#myModal");
+                        modal.css("display","block");
+                        var btn = jq("#myBtn");
+                        
+                        var span = jq(".close")[0];
+                        var hide = jq(".hide");
+  
+                        btn.onclick = function() {
+                          modal.css("display", "block");
+                        }
+                        jq(hide).bind("click",function() {
+                          modal.css("display",  "none");
+                        });
+                        span.onclick = function() {
+                          modal.css("display",  "none");
+                        }
+
+                        window.onclick = function(event) {
+                          if (event.target == modal) {
+                            modal.css("display", "none");
+                          }
+            }');
+        }
+        if($_REQUEST['confirmed'] == 'true'){
+
+            $limit_starter = 0;
+            $limit_grower = 0;
+            $limit_finisher = 0;
+
+            $zal = Utils_RecordBrowserCommon::get_records("kontrakty_zalozenia", array('id_tuczu' => $record['id']));
+            if($zal != Null){
+
+                foreach($zal as $z){
+                    $zal = $z;
+                    $_id = $zal['id'];
+                    break;
+                }
+            }else{
+                $zal = "None";
+            }
+
+            $limits = Utils_CommonDataCommon::get_array("Kontrakty/limity_tuczu_na_paszy");
+            if($zal != "None"){
+                $avg_usage = Utils_CommonDataCommon::get_array("Kontrakty/sr_zuzycie/".$zal['avg_usage']);
+                $selected_plan = Utils_CommonDataCommon::get_array("Kontrakty/sr_zuzycie");
+                $selected_plan = $selected_plan[$zal['avg_usage']];
+                $zal['price_pig'] = substr($zal['price_pig'], 0, -3);
+                $limits['starter_grower'] = $zal['starter_to'];
+                $limits['grower_finisher'] = $zal['grower_to'];
+            }
+            //starter
+            $from = $limits['starter_grower'];
+            $to = $zal['weight_pig_start'];
+            $weight1 = ($from-$to) * custom::change_spearator($avg_usage['starter'],',','.');
+            $weight1 = $weight1 * $zal['planned_amount'];
+
+            //grower
+            $from = $limits['grower_finisher'];
+            $to = $limits['starter_grower'];
+            $weight2 = ($from-$to) * custom::change_spearator($avg_usage['grower'],',','.');
+            $weight2 = $weight2 * $zal['planned_amount'];
+
+            //finisher
+            $from = $zal['weight_pig_end'];
+            $to = $limits['grower_finisher'];
+            $weight3 = ($from-$to) * custom::change_spearator($avg_usage['finisher'],',','.');
+            $weight3 = $weight3 * $zal['planned_amount'];
+
+            $rbo_limits = new RBO_RecordsetAccessor('kontrakty_limity');
+            $limits = $rbo_limits->get_records( array('id_tuczu' => $record['id']),array(),array());
+            foreach($limits as $limit){
+                $limit->delete();
+            }
+            $rbo_limits->new_record(array('id_tuczu'=> $record['id'], 'feed_type' => 'starter', 'amount' => $weight1));
+            $rbo_limits->new_record(array('id_tuczu'=> $record['id'], 'feed_type' => 'grower', 'amount' => $weight2));
+            $rbo_limits->new_record(array('id_tuczu'=> $record['id'], 'feed_type' => 'finisher', 'amount' => $weight3));
+
+
+        }
+
         Base_ThemeCommon::install_default_theme($this->get_type());
         $help = "<ul style='text-align:left;'>";
         $help .= "<li> W tym miejscu dodajemy dostawe pasz</li></ul>";
@@ -70,8 +208,23 @@ class tuczkontraktowy extends Module {
 
         //$_SESSION['display_current_name_view'] = "Limity";
         custom::addButton("kontrakty_limity","Dodaj limity paszy","");
+
         print('<a class="epesi_big_button" '.$this->create_callback_href(array($this,'limits_list'),array($record)).'>Wyświetl limity pasz</a><br><br>');
 
+        Base_ActionBarCommon::add(
+            'report',
+            "Wygeneruj harmonogram dostaw",
+            $this->create_href ( array ('generate' => 'true')),
+            null,
+            4
+        );
+        Base_ActionBarCommon::add(
+            'save',
+            "Ustaw limity z założeń",
+            $this->create_href ( array ('limits' => 'true')),
+            null,
+            4
+        );
         $exist_types = [];
         $exist_amount = [];
         $price_avg = [];
@@ -144,8 +297,6 @@ class tuczkontraktowy extends Module {
             print("</table>");
         }
 
-
-
     }
 
     public function transporty_view($record){
@@ -155,7 +306,7 @@ class tuczkontraktowy extends Module {
         custom::set_header("TUCZ - ".$record['name_number']);
         custom::create_new_faktura();
         $_SESSION['display_current_name_view'] = "Transporty";
-        custom::addButton("kontrakty_faktury_pozycje","Dodaj transport","");
+        custom::addButton("kontrakty_faktury_pozycje","Dodaj transport","TR");
         $_SESSION['adding_type'] = 'transport';
 
         $rbo = new RBO_RecordsetAccessor("kontrakty_faktury_transporty");
@@ -164,13 +315,28 @@ class tuczkontraktowy extends Module {
         $gb = &$this->init_module('Utils/GenericBrowser', null, 'Pasze');
         $gb->set_table_columns(
             array(
-                array('name'=>'Sprzedaż', 'width'=>10 , ),
-                array('name'=>'Szczegóły', 'width'=>90),
+                array('name'=>'Transporty', 'width'=>20),
+                array('name'=>'Data transportu', 'width'=>20),
+                array('name'=>'Ilość sztuk', 'width'=>20),
+                array('name'=>'Cena netto', 'width'=>20),
+                array('name'=>'Odbiorca', 'width'=>20),
             )
         );
         foreach($trans as $p){
-            $gb->add_row( $info->get_record($p['fakt_poz'])->create_default_linked_label(false,  false),
-            $p->create_default_linked_label(false, false));
+            $r = $info->get_record($p['fakt_poz']);
+            $link = $info->get_record($p['fakt_poz'])->create_default_linked_label(false,  false);
+            $link = $info->get_record($p['fakt_poz'])->record_link(($r->description ?: "Brakuje opisu" )." ",false);
+
+            $reciver = new RBO_RecordsetAccessor('company');
+            $rec = $reciver->get_record($p['company']);
+
+            $gb->add_row(
+                $link,
+                $p->date,
+                $p->amount,
+                $p->netto." zł",
+                $rec->company_name
+            );
         
         }   
         $this->display_module( $gb );
@@ -318,7 +484,7 @@ class tuczkontraktowy extends Module {
     }
 
     public function ExtraValue($record){
-        if($record['typ_faktury'] == "W" || $record['typ_faktury'] == "T" || $record['typ_faktury'] == "P" || $record['typ_faktury'] == "OTH" ) {
+        if($record['typ_faktury'] == "W" || $record['typ_faktury'] == "T" || $record['typ_faktury'] == "P" || $record['typ_faktury'] == "OTH" || $record['typ_faktury'] == "TR" ) {
             $form = $this->init_module('Libs/QuickForm');
             $rbo = new RBO_RecordsetAccessor(custom::table_names($record['typ_faktury']));
             $r = null;
@@ -366,6 +532,9 @@ class tuczkontraktowy extends Module {
                 if ($values['date_recived']) {
                     $values['date_recived'] = $values['date_recived']['Y'] . "-" . $values['date_recived']['M'] . "-" . $values['date_recived']['d'];
                 }
+                if ($values['date']) {
+                    $values['date'] = $values['date']['Y'] . "-" . $values['date']['M'] . "-" . $values['date']['d'];
+                }
                 if ($record_exist) {
                     //edit
                     $updated_fields = array();
@@ -398,10 +567,20 @@ class tuczkontraktowy extends Module {
                   zatwierdzić to przyciskiem zapisz  </li>
         </ul>";
         print($help);
+        if(isset($_REQUEST['delete_record'])){
+            Utils_RecordBrowserCommon::delete_record('kontrakty_wazenie',$_REQUEST['delete_record']);
+        }
+        if($_REQUEST['action'] == 'show'){
+            $_SESSION['wazenie'] = null;
+            $_SESSION['action'] = null;
+            unset($_SESSION['wazenie']);
+            unset($_SESSION['action']);
+        }
+
         custom::create_new_faktura();
         custom::set_header("TUCZ - ".$record['name_number']);
             $rbo = new RBO_RecordsetAccessor("kontrakty_wazenie");
-            $daty =  DB::GetAll("SELECT DISTINCT f_date_weight FROM kontrakty_wazenie_data_1 WHERE f_id_tuczu = " .$record['id']. "  ORDER BY f_date_weight");
+            $daty =  DB::GetAll("SELECT DISTINCT f_date_weight FROM kontrakty_wazenie_data_1 WHERE (f_id_tuczu = " .$record['id']. " AND active = 1)  ORDER BY f_date_weight");
             $gb = &$this->init_module('Utils/GenericBrowser', null, 'Ważenie');
             $gb->set_table_columns(
                 array(
@@ -448,7 +627,13 @@ class tuczkontraktowy extends Module {
                 "<a  style='margin-left:10px;'". $this->create_href ( array ('action' => 'view_all')) ."> Zestawienie wszystkich przeważeń </a>", '',""
             );
             $this->display_module( $gb );
-        if($_REQUEST['action'] == 'view_record'){
+        if($_REQUEST['action'] == 'view_record' || $_SESSION['wazenie'] != null){
+            $_SESSION['action'] = 'view_record';
+            if(!isset($_SESSION['wazenie'])) {
+                $_SESSION['wazenie'] = $_REQUEST['wazenie'];
+            }else{
+                $_REQUEST['wazenie'] = $_SESSION['wazenie'];
+            }
             custom::openButtonsPanel();     
             custom::button("action=show","Wstecz");
             custom::closeButtonsPanel();
@@ -456,16 +641,26 @@ class tuczkontraktowy extends Module {
             $waga = $rbo->get_records(array('id_tuczu' => $record['id'] ,'date_weight' => $_REQUEST['wazenie'] ),array(),array('pig_number'=> "ASC"));
             $gb = &$this->init_module('Utils/GenericBrowser', null, 'Ważenie');
             $gb->set_table_columns(
-                array( 
-                    array('name'=>'Numer Świni', 'width'=>30),
-                    array('name'=>'Data ważenia', 'width'=>30),
-                    array('name'=>'Waga', 'width'=>30),
+                array(
+                    array('name=' => '', 'width' => 5),
+                    array('name'=>'Numer Świni', 'width'=>25),
+                    array('name'=>'Data ważenia', 'width'=>25),
+                    array('name'=>'Waga', 'width'=>25),
                 )
             );
             foreach($waga as $p){
-                $gb->add_row(   $p->get_val('pig_number'),
-                                $p->get_val('date_weight'),
-                                "<span style='margin-left:5px;' >".$p->record_link($p['weight'])."</span>");
+                $buttons = "";
+                $del_btn = "<img border='0' src='data/Base_Theme/templates/default/Utils/Calendar/delete.png' alt='Usuń' />";
+                $edit_btn = "<img border='0' src='data/Base_Theme/templates/default/Utils/Calendar/edit.png' alt='Edytuj' />";
+                $del = $del = $this->create_href(array("delete_record" => $p->id));
+                $del = "<a ".$del.">".$del_btn."</a>";
+                $edit = $p->record_link($edit_btn,false,'edit');
+                $buttons = $edit ." ". $del;
+                $gb->add_row(
+                    $buttons,
+                    $p->get_val('pig_number'),
+                    $p->get_val('date_weight'),
+                    "<span style='margin-left:5px;' >".$p->record_link($p['weight'])."</span>");
             
             }
             $this->display_module( $gb );
@@ -1101,6 +1296,9 @@ class custom{
             case "OTH":
                 $table_name = "kontrakty_inne";
                 break;
+            case "TR":
+                $table_name = "kontrakty_faktury_transporty";
+                break;
             case "Z":
                 break;
 
@@ -1126,11 +1324,23 @@ class custom{
                 array_push($fields, array('name' => 'weight_alive_brutto' , 'type' => 'text'));
                 array_push($fields, array('name' => 'meatiness' , 'type' => 'text'));
                 break;
+            case 'TR':
+                $opt = Utils_RecordBrowserCommon::get_records('company',array('group' => 'ubojnia'), array('company_name'), array());
+                $companies = array();
+                foreach($opt as $option){
+                    $companies[$option['id']] = $option['company_name'];
+                }
+                array_push($fields, array('name' => 'date' , 'type' => 'date'));
+                array_push($fields, array('name' => 'amount' , 'type' => 'text', 'rule'=>'numeric' , 'msg' => "Dozwolone same cyfry"));
+                array_push($fields, array('name' => 'netto' , 'type' => 'text'));
+                array_push($fields, array('name' => 'company' , 'type' => 'select','options'=> $companies));
+                break;
             case 'OTH':
                 $opt = Utils_CommonDataCommon::get_array("Kontrakty/inne");
                 array_push($fields, array('name' => 'other_type' , 'type' => 'select','options'=> $opt));
 
                 break;
+
         }
         return $fields;
     }

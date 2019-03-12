@@ -39,7 +39,7 @@ class tuczkontraktowyInstall extends ModuleInstall {
 
         Utils_CommonDataCommon::new_array("Kontrakty/inne", array('Wet' => 'Weterynarz'));
 
-        Utils_CommonDataCommon::new_array("Faktury/fv_sub_type", array('T' => 'Tucznik' , 
+        Utils_CommonDataCommon::new_array("Faktury/fv_sub_type", array('T' => 'Tucznik' , 'TR' => "Transport",
         'W' => 'Warchlak', 'O' => 'Owca', 'P'=> 'Pasza', 'OTH'=> "Tucze - koszty inne"));
 
 

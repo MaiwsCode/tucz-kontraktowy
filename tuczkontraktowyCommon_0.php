@@ -146,6 +146,10 @@ class tuczkontraktowyCommon extends ModuleCommon {
                 Utils_RecordBrowserCommon::new_record(tuczkontraktowyCommon::table_names($record['typ_faktury']), array('id_tuczu' => $_SESSION['tucz_id'],
                     'fakt_poz' => $record['id'], 'type' => 'Wet'));
             }
+            if ($record['typ_faktury'] == "TR") {
+                Utils_RecordBrowserCommon::new_record(tuczkontraktowyCommon::table_names($record['typ_faktury']), array('id_tuczu' => $_SESSION['tucz_id'],
+                    'fakt_poz' => $record['id'], 'date' => date("Y-m-d"),'amount' => '0', 'netto'=> 0));
+            }
         }
         if($mode == "delete") {
             //get_records
@@ -407,6 +411,9 @@ class tuczkontraktowyCommon extends ModuleCommon {
                 break;
             case "OTH":
                 $table_name = "kontrakty_inne";
+                break;
+            case "TR":
+                $table_name = "kontrakty_faktury_transporty";
                 break;
             case "Z":
                 break;
