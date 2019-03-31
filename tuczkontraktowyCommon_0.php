@@ -28,6 +28,9 @@ class tuczkontraktowyCommon extends ModuleCommon {
 	public static function critOnlyUbojnia() {
     	return array('group' => array('ubojnia') );
 	}
+    public static function critOnlyVendor() {
+        return array('group' => array('vendor') );
+    }
 
 	public static function critNoEqualEditable() {
     	return array('status' => array('editable'));

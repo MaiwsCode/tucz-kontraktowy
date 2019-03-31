@@ -71,14 +71,14 @@ class tuczkontraktowy_zalozenia  extends RBO_Recordset {
     $gr_to = new RBO_Field_Float(_M("grower to"));
     $gr_to->set_visible();
 
-    //min kg na finisher
-    //$fin_from = new RBO_Field_Float(_M("finisher from"));
-    //$fin_from->set_visible();
+    //dostawca paszy
+     $deliverer = new RBO_Field_Select(_M('deliverer'));
+     $deliverer->from('company')->set_crits_callback("tuczkontraktowyCommon::critOnlyVendor")->fields('company_name')->set_visible()->set_required();
 
 
      return array($tucz_id,$weight_pig_start,$weight_pig_end,$price_st,
      $price_gr,$price_fin,$price_pig,$avg_usage,$med,$lose,$farmer,
-    $st_to,$gr_to,$planned_amount);
+    $st_to,$gr_to,$planned_amount,$deliverer);
 
 
  }

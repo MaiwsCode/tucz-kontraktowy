@@ -75,6 +75,7 @@ class tuczkontraktowy extends Module {
             $farmer =  Utils_RecordBrowserCommon::get_record("company", $record['farmer']);
             $rbo_limits = new RBO_RecordsetAccessor('kontrakty_limity');
             $limits = $rbo_limits->get_records( array('id_tuczu' => $record['id']),array(),array());
+            $deliver = Utils_RecordBrowserCommon::get_record("company", $zal['deliverer']);
             $all_limits = 0;
             $starter = 0;
             $grower = 0;
@@ -89,6 +90,11 @@ class tuczkontraktowy extends Module {
             $end_date =  strtotime($record['data_start']);
             $end_date += (90 * 24*60*60);
             $end_date = date("Y-m-d", $end_date);
+            $template->replace('deliverName', $deliver['company_name']);
+            $template->replace('deliverAdress', $deliver['address_1']);
+            $template->replace('deliverPostalCode', $deliver['postal_code']);
+            $template->replace('deliverCity', $deliver['city']);
+            $template->replace('deliverNIP', $deliver['tax_id']);
             $template->replace('date', $record['data_start']);
             $template->replace('amount', $zal['planned_amount']);
             $template->replace('weight', $zal['weight_pig_start']);
@@ -580,7 +586,7 @@ class tuczkontraktowy extends Module {
         custom::create_new_faktura();
         custom::set_header("TUCZ - ".$record['name_number']);
             $rbo = new RBO_RecordsetAccessor("kontrakty_wazenie");
-            $daty =  DB::GetAll("SELECT DISTINCT f_date_weight FROM kontrakty_wazenie_data_1 WHERE (f_id_tuczu = " .$record['id']. " AND active = 1)  ORDER BY f_date_weight");
+        $daty =  DB::GetAll("SELECT DISTINCT f_date_weight FROM kontrakty_wazenie_data_1 WHERE (f_id_tuczu = " .$record['id']. " AND active = 1)  ORDER BY f_date_weight");
             $gb = &$this->init_module('Utils/GenericBrowser', null, 'Ważenie');
             $gb->set_table_columns(
                 array(
