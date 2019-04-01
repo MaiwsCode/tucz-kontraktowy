@@ -153,7 +153,11 @@ class tuczkontraktowyCommon extends ModuleCommon {
                 Utils_RecordBrowserCommon::new_record(tuczkontraktowyCommon::table_names($record['typ_faktury']), array('id_tuczu' => $_SESSION['tucz_id'],
                     'fakt_poz' => $record['id'], 'date' => date("Y-m-d"),'amount' => '0', 'netto'=> 0));
             }
-        }
+		}
+		if($mode == 'editing'){
+			$_SESSION['oldType'] = $record['typ_faktury'];
+		}
+
         if($mode == "delete") {
             //get_records
             if ($record['typ_faktury']) {
@@ -402,25 +406,20 @@ class tuczkontraktowyCommon extends ModuleCommon {
 	}
     public static function table_names($table_id){
         $table_name = "";
-        switch ($table_id){
-            case "W":
-                $table_name = "kontrakty_faktury_dostawa_warchlaka";
-                break;
-            case "T":
-                $table_name = "kontrakty_faktury_odbior_tucznika";
-                break;
-            case "P":
-                $table_name = "kontrakty_faktury_dostawa_paszy";
-                break;
-            case "OTH":
-                $table_name = "kontrakty_inne";
-                break;
-            case "TR":
-                $table_name = "kontrakty_faktury_transporty";
-                break;
-            case "Z":
-                break;
-
+        if($table_id == "W") {
+            $table_name = "kontrakty_faktury_dostawa_warchlaka";
+        }
+        else if($table_id == "T") {
+            $table_name = "kontrakty_faktury_odbior_tucznika";
+        }
+        else if($table_id == "P") {
+            $table_name = "kontrakty_faktury_dostawa_paszy";
+        }
+        else if($table_id == "OTH"){
+            $table_name = "kontrakty_inne";
+        }
+        else if($table_id == "TR"){
+            $table_name = "kontrakty_faktury_transporty";
         }
         return $table_name;
     }

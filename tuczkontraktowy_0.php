@@ -48,6 +48,12 @@ class tuczkontraktowy extends Module {
 
                 $link = $info->get_record($p['fakt_poz'])->record_link(($r->description ?: "Brakuje opisu" )." ",false);
 
+                if($ub < 0){
+                    $ub = "+ ".$ub;
+                }else{
+                    $ub = "-".$ub;
+                }
+
                 $gb->add_row( $link,
 							  $r['amount']." kg",
 							  $r->get_val('price'),
@@ -55,7 +61,7 @@ class tuczkontraktowy extends Module {
                     str_replace(".",",",round(($r['amount'] / $p['amount']),2))." kg/szt" ,
                     str_replace(".",",",round(($r['price'] / $p['amount']),2)). " zł/szt" ,
 							  $we,
-                    str_replace(".",",",round($ub,2)));
+                    str_replace(".",",",$ub));
             
         }
         $this->display_module( $gb );
@@ -177,7 +183,7 @@ class tuczkontraktowy extends Module {
             }
             //starter
             $from = $limits['starter_grower'];
-            $to = $zal['weight_pig_start'];
+            $to = custom::change_spearator($zal['weight_pig_start'],",",".");
             $weight1 = ($from-$to) * custom::change_spearator($avg_usage['starter'],',','.');
             $weight1 = $weight1 * $zal['planned_amount'];
 
@@ -188,7 +194,7 @@ class tuczkontraktowy extends Module {
             $weight2 = $weight2 * $zal['planned_amount'];
 
             //finisher
-            $from = $zal['weight_pig_end'];
+            $from = custom::change_spearator($zal['weight_pig_end'],",",".");
             $to = $limits['grower_finisher'];
             $weight3 = ($from-$to) * custom::change_spearator($avg_usage['finisher'],',','.');
             $weight3 = $weight3 * $zal['planned_amount'];
@@ -490,10 +496,22 @@ class tuczkontraktowy extends Module {
     }
 
     public function ExtraValue($record){
-        if($record['typ_faktury'] == "W" || $record['typ_faktury'] == "T" || $record['typ_faktury'] == "P" || $record['typ_faktury'] == "OTH" || $record['typ_faktury'] == "TR" ) {
+        if($record['typ_faktury'] == "W" || $record['typ_faktury'] == "T" || $record['typ_faktury'] == "P"
+            || $record['typ_faktury'] == "OTH" || $record['typ_faktury'] == "TR" ) {
+            $switched = false;
+            if($type != $_SESSION['oldType']){
+                $switched = true;
+                $rbo_ = new RBO_RecordsetAccessor(custom::table_names($_SESSION['oldType']));
+                $_records = $rbo_->get_records(array('fakt_poz' => $record['id'], 'id_tuczu' => $_SESSION['tucz_id']),array(),array());
+                foreach($_records as $rkd){
+                    $rkd->delete();
+                }
+                tuczkontraktowyCommon::on_add_details($record,'added');
+            }
             $form = $this->init_module('Libs/QuickForm');
             $rbo = new RBO_RecordsetAccessor(custom::table_names($record['typ_faktury']));
             $r = null;
+            $type = $record['typ_faktury'];
             $record_exist = false;
             if ($r = $rbo->get_records(array('fakt_poz' => $record['id'], 'id_tuczu' => $_SESSION['tucz_id']), array(), array())) {
                 foreach ($r as $rec) {
@@ -541,8 +559,9 @@ class tuczkontraktowy extends Module {
                 if ($values['date']) {
                     $values['date'] = $values['date']['Y'] . "-" . $values['date']['M'] . "-" . $values['date']['d'];
                 }
-                if ($record_exist) {
-                    //edit
+
+     
+                if ($record_exist == true && $switched == false) {
                     $updated_fields = array();
                     $values['id_tuczu'] = $_SESSION['tucz_id'];
                     $values['fakt_poz'] = $record['id'];
@@ -553,17 +572,19 @@ class tuczkontraktowy extends Module {
                         custom::table_names($record['typ_faktury']), $r['id'], $updated_fields
 
                     );
-                } else {
+                }
+                else {
                     //add new
-                    $values['id_tuczu'] = $_SESSION['tucz_id'];
-                    $values['fakt_poz'] = $record['id'];
                     foreach ($fields as $field) {
                         $r[$field['name']] = $values[$field['name']];
                     }
+                    $r->id_tuczu = $_SESSION['tucz_id'];
+                    $r->fakt_poz = $record['id'];
                     $r->save();
                 }
             }
         }
+        $_SESSION['oldType'] = 0;
     }
 
     public function przewaga_view($record){
@@ -1143,7 +1164,7 @@ class tuczkontraktowy extends Module {
             )
         );
         $tables_names = ['kontrakty_faktury_dostawa_warchlaka', 'kontrakty_faktury_dostawa_paszy',
-            'kontrakty_inne' , 'kontrakty_faktury_odbior_tucznika'];
+            'kontrakty_inne' , 'kontrakty_faktury_odbior_tucznika' , 'kontrakty_faktury_transporty'];
         $ids_list = [];
         for($i = 0;$i<count($tables_names);$i++){
             $rbo  = new RBO_RecordsetAccessor($tables_names[$i]);
@@ -1289,64 +1310,56 @@ class custom{
     }
     public static function table_names($table_id){
         $table_name = "";
-        switch ($table_id){
-            case "W":
-                $table_name = "kontrakty_faktury_dostawa_warchlaka";
-                break;
-            case "T":
-                $table_name = "kontrakty_faktury_odbior_tucznika";
-                break;
-            case "P":
-                $table_name = "kontrakty_faktury_dostawa_paszy";
-                break;
-            case "OTH":
-                $table_name = "kontrakty_inne";
-                break;
-            case "TR":
-                $table_name = "kontrakty_faktury_transporty";
-                break;
-            case "Z":
-                break;
-
+        if($table_id == "W"){
+            $table_name = "kontrakty_faktury_dostawa_warchlaka";
+        }
+        else if($table_id == "T"){
+            $table_name = "kontrakty_faktury_odbior_tucznika";
+        }
+        else if($table_id == "P"){
+            $table_name = "kontrakty_faktury_dostawa_paszy";
+        }
+        else if($table_id == "OTH"){
+            $table_name = "kontrakty_inne";
+        }
+        else if($table_id == "TR"){
+            $table_name = "kontrakty_faktury_transporty";
+        }
+        else if($table_id == "Z"){
         }
         return $table_name;
     }
     public static function table_fields($table_id){
         $fields = [];
-        switch ($table_id){
-            case 'W':
-                array_push($fields, array('name' => 'amount' , 'type' => 'text', 'rule'=>'numeric' , 'msg' => "Dozwolone same cyfry"));
-                array_push($fields, array('name' => 'weight_on_drop' , 'type' => 'text'));
-                break;
+        if($table_id == 'W'){
+            array_push($fields, array('name' => 'amount' , 'type' => 'text', 'rule'=>'numeric' , 'msg' => "Dozwolone same cyfry"));
+            array_push($fields, array('name' => 'weight_on_drop' , 'type' => 'text'));
+            }
+        if($table_id == 'P') {
+            $feeds = Utils_CommonDataCommon::get_array("/Faktury/pasze");
+            array_push($fields, array('name' => 'feed_type', 'type' => 'select', 'options' => $feeds));
+        }
 
-            case 'P':
-                $feeds = Utils_CommonDataCommon::get_array("/Faktury/pasze");
-                array_push($fields, array('name' => 'feed_type' , 'type' => 'select','options'=> $feeds));
-                break;
-
-            case 'T':
-                array_push($fields, array('name' => 'date_recived' , 'type' => 'date'));
-                array_push($fields, array('name' => 'amount' , 'type' => 'text', 'rule'=>'numeric' , 'msg' => "Dozwolone same cyfry"));
-                array_push($fields, array('name' => 'weight_alive_brutto' , 'type' => 'text'));
-                array_push($fields, array('name' => 'meatiness' , 'type' => 'text'));
-                break;
-            case 'TR':
-                $opt = Utils_RecordBrowserCommon::get_records('company',array('group' => 'ubojnia'), array('company_name'), array());
-                $companies = array();
-                foreach($opt as $option){
-                    $companies[$option['id']] = $option['company_name'];
-                }
-                array_push($fields, array('name' => 'date' , 'type' => 'date'));
-                array_push($fields, array('name' => 'amount' , 'type' => 'text', 'rule'=>'numeric' , 'msg' => "Dozwolone same cyfry"));
-                array_push($fields, array('name' => 'netto' , 'type' => 'text'));
-                array_push($fields, array('name' => 'company' , 'type' => 'select','options'=> $companies));
-                break;
-            case 'OTH':
-                $opt = Utils_CommonDataCommon::get_array("Kontrakty/inne");
-                array_push($fields, array('name' => 'other_type' , 'type' => 'select','options'=> $opt));
-
-                break;
-
+        if($table_id == 'T') {
+            array_push($fields, array('name' => 'date_recived', 'type' => 'date'));
+            array_push($fields, array('name' => 'amount', 'type' => 'text', 'rule' => 'numeric', 'msg' => "Dozwolone same cyfry"));
+            array_push($fields, array('name' => 'weight_alive_brutto', 'type' => 'text'));
+            array_push($fields, array('name' => 'meatiness', 'type' => 'text'));
+        }
+        if($table_id == 'TR') {
+            $opt = Utils_RecordBrowserCommon::get_records('company', array('group' => 'ubojnia'), array('company_name'), array());
+            $companies = array();
+            foreach ($opt as $option) {
+                $companies[$option['id']] = $option['company_name'];
+            }
+            array_push($fields, array('name' => 'date', 'type' => 'date'));
+            array_push($fields, array('name' => 'amount', 'type' => 'text', 'rule' => 'numeric', 'msg' => "Dozwolone same cyfry"));
+            array_push($fields, array('name' => 'netto', 'type' => 'text'));
+            array_push($fields, array('name' => 'company', 'type' => 'select', 'options' => $companies));
+        }
+        if($table_id == 'OTH') {
+            $opt = Utils_CommonDataCommon::get_array("Kontrakty/inne");
+            array_push($fields, array('name' => 'other_type', 'type' => 'select', 'options' => $opt));
         }
         return $fields;
     }
