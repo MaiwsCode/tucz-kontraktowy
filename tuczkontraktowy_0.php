@@ -68,57 +68,7 @@ class tuczkontraktowy extends Module {
     }
 
     public function pasze_list($record){
-        if($_REQUEST['generate']){
 
-            require_once 'Template.php';
-
-            $template = new Template();
-
-            $template->open(__DIR__.'/harmonogramy/template.docx');
-
-            $zal = Utils_RecordBrowserCommon::get_records("kontrakty_zalozenia", array('id_tuczu' => $record['id']));
-            foreach ($zal as $z){$zal = $z;break;}
-            $farmer =  Utils_RecordBrowserCommon::get_record("company", $record['farmer']);
-            $rbo_limits = new RBO_RecordsetAccessor('kontrakty_limity');
-            $limits = $rbo_limits->get_records( array('id_tuczu' => $record['id']),array(),array());
-            $deliver = Utils_RecordBrowserCommon::get_record("company", $zal['deliverer']);
-            $all_limits = 0;
-            $starter = 0;
-            $grower = 0;
-            $finisher = 0;
-            foreach($limits as $limit){
-                $all_limits += $limit->amount;
-                $starter = ($limit->feed_type == 'starter' ? $starter = $limit->amount : $starter);
-                $grower = ($limit->feed_type == 'grower' ? $grower = $limit->amount : $grower);
-                $finisher = ($limit->feed_type == 'finisher' ? $finisher = $limit->amount : $finisher);
-            }
-            $full_address = $farmer["address_1"].", ".$farmer["postal_code"]." ".$farmer["city"]."  ";
-            $end_date =  strtotime($record['data_start']);
-            $end_date += (90 * 24*60*60);
-            $end_date = date("Y-m-d", $end_date);
-            $template->replace('deliverName', $deliver['company_name']);
-            $template->replace('deliverAdress', $deliver['address_1']);
-            $template->replace('deliverPostalCode', $deliver['postal_code']);
-            $template->replace('deliverCity', $deliver['city']);
-            $template->replace('deliverNIP', $deliver['tax_id']);
-            $template->replace('date', $record['data_start']);
-            $template->replace('amount', $zal['planned_amount']);
-            $template->replace('weight', $zal['weight_pig_start']);
-            $template->replace('who',  $farmer["company_name"]);
-            $template->replace('where', $full_address);
-            $template->replace('from', $record['data_start']);
-            $template->replace('to', $end_date);
-            $template->replace('how_many',  number_format($all_limits ,"0",","," "));
-            $template->replace('starter', number_format($starter,"0",","," "));
-            $template->replace('grower', number_format($grower,"0",","," "));
-            $template->replace('finisher', number_format($finisher,"0",","," "));
-            $template->replace('koncentrat', '0');
-            $template->replace('paid_day', $end_date);
-            $template->save((__DIR__.'/harmonogramy/'.$record['data_start'].'_'.$farmer['company_name'].'.docx'));
-
-            Epesi::redirect($_SERVER['document_root'].'/modules/tuczkontraktowy/harmonogramy/'.$record['data_start'].'_'.$farmer['company_name'].'.docx');
-            unlink($_SERVER['document_root'].'/modules/tuczkontraktowy/harmonogramy/harmonogram_'.$record['data_start'].'_'.$farmer['company_name'].'.docx');
-        }
         if($_REQUEST['limits'] == true){
 
             $yes ='<span class="hide"><a class="epesi_big_button" '.$this->create_href ( array ('confirmed' => 'true')).'>Tak</a></span>';
@@ -211,7 +161,7 @@ class tuczkontraktowy extends Module {
 
         }
 
-        Base_ThemeCommon::install_default_theme($this->get_type());
+        //Base_ThemeCommon::install_default_theme($this->get_type());
         $help = "<ul style='text-align:left;'>";
         $help .= "<li> W tym miejscu dodajemy dostawe pasz</li></ul>";
         print($help);
@@ -221,12 +171,13 @@ class tuczkontraktowy extends Module {
         //$_SESSION['display_current_name_view'] = "Limity";
         custom::addButton("kontrakty_limity","Dodaj limity paszy","");
 
+        $downladHref = 'href="modules/tuczkontraktowy/word.php?'.http_build_query(array('recordID'=> $record['id'] , 'cid'=>CID)).'"';
         print('<a class="epesi_big_button" '.$this->create_callback_href(array($this,'limits_list'),array($record)).'>Wyświetl limity pasz</a><br><br>');
 
         Base_ActionBarCommon::add(
             'report',
             "Wygeneruj harmonogram dostaw",
-            $this->create_href ( array ('generate' => 'true')),
+            $downladHref,
             null,
             4
         );
@@ -1115,6 +1066,9 @@ class tuczkontraktowy extends Module {
         }
         $this->display_module( $gb );
     }
+    public function upadekDelete($id){
+        Utils_RecordBrowserCommon::delete_record("kontrakty_upadki",$id);
+    }
 
     public function upadki_list($record){
         $help = "<ul style='text-align:left;'>";
@@ -1127,17 +1081,29 @@ class tuczkontraktowy extends Module {
         $rbo = new RBO_RecordsetAccessor("kontrakty_upadki");
         $inne = $rbo->get_records(array('id_tuczu' => $record['id']),array(),array('date_fall' => "ASC"));
         $gb = &$this->init_module('Utils/GenericBrowser', null, 'Upadki');
+        $del_btn = "<img border='0' src='data/Base_Theme/templates/default/Utils/Calendar/delete.png' alt='Usuń' />";
+        $edit_btn = "<img border='0' src='data/Base_Theme/templates/default/Utils/Calendar/edit.png' alt='Edytuj' />";
         $gb->set_table_columns(
             array(
-                array('name'=>'Data upadku', 'width'=>30),
-                array('name'=>'Ilość padłych', 'width'=>30),
-                array('name'=>'Waga padłych', 'width'=>30),
+                array('name'=> '' , 'width'=>5 ),
+                array('name'=>'Data upadku', 'width'=>20),
+                array('name'=>'Ilość padłych', 'width'=>20),
+                array('name'=>'Waga padłych', 'width'=>20),
+                array('name'=>'Notatki', 'width'=>20),
             )
         );
         foreach($inne as $p){
-            $gb->add_row(   $p->get_val('date_fall'),
+            $btns = $p->record_link($edit_btn,false,'edit');
+            $del = "<a " . $this->create_confirm_callback_href("Na pewno usunąć?",
+            array($this, "upadekDelete"), array($p->id)) . ">" . $del_btn . "</a>";
+            $btns .= $del;
+            $gb->add_row(   $btns,
+                            $p->get_val('date_fall'),
                             $p->get_val('amount fall'),
-                            $p->get_val('weight_fall'));
+                            $p->get_val('weight_fall'),
+                            $p->get_val("note")
+                        
+                        );
         
         }
         $this->display_module( $gb );
@@ -1244,16 +1210,36 @@ class tuczkontraktowy extends Module {
         $theme->assign("details", $details);
         $theme->display('raport_szefowa');
     }
+    public function deleteTucz($id){
+        Utils_RecordBrowserCommon::delete_record("kontrakty", $id);
+    }
+
+    public function actionBtns($record){
+        $viewImg =   "<img src='data/Base_Theme/templates/default/Utils/GenericBrowser/view.png' />";
+        $editImg =   "<img src='data/Base_Theme/templates/default/Utils/GenericBrowser/edit.png' />";
+        $deleteImg = "<img src='data/Base_Theme/templates/default/Utils/GenericBrowser/delete.png' />";
+        $infoImg =   "<img src='data/Base_Theme/templates/default/Utils/GenericBrowser/info.png' />";
+
+
+        $view =  $record->record_link($viewImg, false, $action = 'view'  );
+        $edit =  $record->record_link($editImg , false,  $action = 'edit');
+        $delete =  "<a " . $this->create_confirm_callback_href("Na pewno usunąć ten tucz?",
+        array($this, "deleteTucz"), array($record->id)) . ">" . $deleteImg . "</a>";
+        $info = $record->get_html_record_info();
+
+         return $view." ".$edit." ".$delete." ";   
+
+    }
+
 
     public function body(){
-		Base_ThemeCommon::install_default_theme($this->get_type());
+        Base_ThemeCommon::install_default_theme($this->get_type());
         custom::create_new_faktura();
         Epesi::js('jq(".name").html("");
         jq(".name").html("<div> Tucze kontraktowe </div>");');
         $rs = new RBO_RecordsetAccessor('kontrakty');
         $rb = $rs->create_rb_module ( $this );
         $this->display_module ( $rb);
-
         Base_ActionBarCommon::add(
             'add',
             'Dodaj nową fakture', 
@@ -1262,7 +1248,6 @@ class tuczkontraktowy extends Module {
                 5
             );
     }
-
     public function settings(){
     }    
 
