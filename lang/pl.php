@@ -67,6 +67,11 @@ $translations['planned_amount']=  'Planowana ilość sztuk';
 $translations['weight_on_drop']=  'Waga z rozładunku';
 $translations['weight_alive_brutto']=  'Waga żywa brutto';
 $translations['other_type']=  'Typ';
+$translations['konfiskaty']=  'Konfiskaty';
+$translations['premiowane']=  'Sztuki premiowane za wagę';
+$translations['suboptimal']=  'Sztuki nie optymalne wagowo';
+$translations['badweight']=  'Sztuki w złej wadze';
+
 
 
 ?>

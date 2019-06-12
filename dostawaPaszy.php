@@ -113,7 +113,20 @@ class tuczkontraktowy_odbior_tucznika  extends RBO_Recordset {
                 $meatiness = new RBO_Field_Text(_M("meatiness"));
                 $meatiness->set_required()->set_visible()->set_length(60);
 
-               return array($tucz_id,$fakt_poz,$weight_alive_brutto,$amount,$meatiness,$date_recived); // - remember to return all defined fields
+                $konfiskaty = new RBO_Field_Integer(_M("konfiskaty"));
+                $konfiskaty->set_visible();
+
+                $premiowane = new RBO_Field_Integer(_M("premiowane"));
+                $premiowane->set_visible();
+
+                $suboptimal = new RBO_Field_Integer(_M("suboptimal"));
+                $suboptimal->set_visible();
+
+                $badWeight = new RBO_Field_Integer(_M("badweight"));
+                $badWeight->set_visible();
+
+
+               return array($tucz_id,$fakt_poz,$weight_alive_brutto,$amount,$meatiness,$date_recived , $konfiskaty, $premiowane, $suboptimal, $badWeight); // - remember to return all defined fields
  
  
     }

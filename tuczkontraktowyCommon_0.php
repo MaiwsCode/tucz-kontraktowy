@@ -133,9 +133,10 @@ class tuczkontraktowyCommon extends ModuleCommon {
 		if($mode == "added" ) {
             $_SESSION['fakt_poz'] = $record['id'];
             $_SESSION['adding_type'] = $record['typ_faktury'];
-            if ($record['typ_faktury'] == "T") {
-                Utils_RecordBrowserCommon::new_record(tuczkontraktowyCommon::table_names($record['typ_faktury']), array('id_tuczu' => $_SESSION['tucz_id'], 'fakt_poz' => $record['id'],
-                    'date_recived' => date("Y-m-d"), 'price_netto'=> '0' , 'weight_brutto' => '0', 'weight_meat' => '0', 'meatiness' =>0 ));
+            if ($record['typ_faktury'] == "T"){
+                    Utils_RecordBrowserCommon::new_record(tuczkontraktowyCommon::table_names($record['typ_faktury']), array('id_tuczu' => $_SESSION['tucz_id'], 'fakt_poz' => $record['id'],
+                        'date_recived' => date("Y-m-d"), 'price_netto'=> '0' , 'weight_alive_brutto' => '0', 'weight_meat' => '0', 'meatiness' =>0 , 'badweight' => 0 ,
+                        "suboptimal" => 0, "premiowane" => 0, "konfiskaty" => 0));
             }
             if ($record['typ_faktury'] == "W") {
                 Utils_RecordBrowserCommon::new_record(tuczkontraktowyCommon::table_names($record['typ_faktury']), array('id_tuczu' => $_SESSION['tucz_id'],
@@ -172,6 +173,7 @@ class tuczkontraktowyCommon extends ModuleCommon {
         }
 
 		if($mode == "display" ||  $mode ==  'editing' ){
+
 			if(isset($_SESSION['display_current_name_view'])){
 				Epesi::js('jq(".name").html("");
 				jq(".name").html("<div> '. $_SESSION['display_current_name_view'].'</div>");');

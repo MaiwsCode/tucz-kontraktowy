@@ -378,10 +378,6 @@ class tuczkontraktowy extends Module {
         print("</table>");
 
 
-
-
-
-
     }
 
     public function inne_list($record){
@@ -450,6 +446,7 @@ class tuczkontraktowy extends Module {
         if($record['typ_faktury'] == "W" || $record['typ_faktury'] == "T" || $record['typ_faktury'] == "P"
             || $record['typ_faktury'] == "OTH" || $record['typ_faktury'] == "TR" ) {
             $switched = false;
+            $type = $record['typ_faktury'];
             if($type != $_SESSION['oldType']){
                 $switched = true;
                 $rbo_ = new RBO_RecordsetAccessor(custom::table_names($_SESSION['oldType']));
@@ -462,7 +459,6 @@ class tuczkontraktowy extends Module {
             $form = $this->init_module('Libs/QuickForm');
             $rbo = new RBO_RecordsetAccessor(custom::table_names($record['typ_faktury']));
             $r = null;
-            $type = $record['typ_faktury'];
             $record_exist = false;
             if ($r = $rbo->get_records(array('fakt_poz' => $record['id'], 'id_tuczu' => $_SESSION['tucz_id']), array(), array())) {
                 foreach ($r as $rec) {
@@ -1330,6 +1326,10 @@ class custom{
             array_push($fields, array('name' => 'amount', 'type' => 'text', 'rule' => 'numeric', 'msg' => "Dozwolone same cyfry"));
             array_push($fields, array('name' => 'weight_alive_brutto', 'type' => 'text'));
             array_push($fields, array('name' => 'meatiness', 'type' => 'text'));
+            array_push($fields, array('name' => 'konfiskaty', 'type' => 'text'));
+            array_push($fields, array('name' => 'premiowane', 'type' => 'text'));
+            array_push($fields, array('name' => 'suboptimal', 'type' => 'text'));
+            array_push($fields, array('name' => 'badweight', 'type' => 'text'));
         }
         if($table_id == 'TR') {
             $opt = Utils_RecordBrowserCommon::get_records('company', array('group' => 'ubojnia'), array('company_name'), array());

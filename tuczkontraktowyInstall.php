@@ -298,12 +298,12 @@ class tuczkontraktowyInstall extends ModuleInstall {
 	}
     public function version() {
 
-        return array('1.0'); 
+        return array('1.1');
     }
     public function simple_setup() { // Indicates if this module should be visible on the module list in Main Setup's simple view
 		return array (
 				'package' => __ ( 'Tucze kontraktowe' ),
-				'version' => '0.1' 
+				'version' => '1.1'
 		); // - now the module will be visible as "HelloWorld" in simple_view
 	}
 

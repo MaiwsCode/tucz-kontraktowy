@@ -1,10 +1,4 @@
 <?php
-/**
- * Created by PhpStorm.
- * User: Mati
- * Date: 05.06.2019
- * Time: 12:53
- */
 
 $cid = $_REQUEST['cid'];
 define('CID', $cid);
