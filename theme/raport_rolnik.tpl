@@ -10,91 +10,115 @@
     <tr>
         <td> {$details.farmer_name} </td>
         <td> {$details.date_start} </td>
-        <td> {$details.amount_pigs} </td>
+        <td> {$details.sumaWarchlakow} </td>
         <td> {$details.key} </td>
     </tr>
     </table>
 <table class="ttable ttable-hover ttable-bordered" style="margin-top:15px;margin-bottom:15px;user-select: text;width:60%;">
+
     <tr>
-        <th>WYLICZENIA PARAMETRÓW TUCZU </th>
-        <th> na sztukę</th>
+        <td> Waga średnia wstawienia warchlaka </td>
+        <td>  {$details.srWagaWarchlaka} </td>
+    </tr>
+    <tr>
+        <td> Ilość tuczników odebranych </td>
+        <td> {$details.sumaTucznikow}  </td>
+    </tr>
+    <tr>
+        <td> Waga średnia żywa oddanego tucznika</td>
+        <td> {$details.srWagaTucznika} </td>
+    </tr>
+    <tr>
+        <td> Czas tuczu	</td>
+        <td> {$details.czasTuczu}  </td>
+    </tr>
+    <tr>
+        <td> Koszt leczenia na sztukę pełnowartościową	</td>
+        <td> </td>
+    </tr>
+    <tr>
+        <td> Średnie zużycie paszy	</td>
+        <td> {$details.srZuzyciePaszy}  </td>
+    </tr>
+</table>
+<table class="ttable ttable-hover ttable-bordered" style="margin-top:15px;margin-bottom:15px;user-select: text;width:60%;">
+
+    <tr>
+        <th colspan=''>Składnik cenowy</th>
+        <th colspan=''>Sztuki</th>
+        <th colspan=''>Cena jednostkowa</th>
+        <th colspan=''>Wartość</th>
+    </tr>
+    <tr>
+        <td> Stawka bazowa </td>
+        <td> {$details.pelnowartosciowe}  </td>
+        <td>  </td>
+        <td>  </td>
+    </tr>
+    <tr>
+        <td> Weterynaria </td>
+        <td> {$details.pelnowartosciowe} </td>
+        <td>  </td>
+        <td>  </td>
+    </tr>
+    <tr>
+        <td> Upadki </td>
+        <td> {$details.pelnowartosciowe}  </td>
+        <td> {$details.upadki}   </td>
+        <td>  </td>
+    </tr>
+    <tr>
+        <td> Premia wagi optymalnej </td>
+        <td>  </td>
+        <td> 2 </td>
+        <td>  </td>
+    </tr>
+    <tr>
+        <td> Kara wagi słabe</td>
+        <td>  </td>
+        <td> -5 </td>
+        <td>  </td>
+    </tr>
+
+    <tr>
+        <td> Kara wagi krytyczne + </td>
+        <td>  </td>
+        <td> -10 </td>
+        <td>  </td>
+    </tr>
+    <tr>
+        <td> Kara wagi krytyczne - </td>
+        <td>  </td>
+        <td> -10 </td>
+        <td>  </td>
+    </tr>
+</table>
+    <table class="ttable ttable-hover ttable-bordered" style="margin-top:15px;margin-bottom:15px;user-select: text;width:60%;">
+    <tr>
+        <th colspan="3"> Pasza </th>
 
     </tr>
+        {if $details.nf }
     <tr>
-        <td> Waga wstawienia warchlaka </td>
-        <td> {$details.start_weight} </td>
+        <td> Nowa formuła - NF </td>
+        <td>  </td>
+        <td>  </td>
+    </tr>
+    {else}
+    <tr>
+        <td> Formuła Pełna - PF  </td>
+        <td>  </td>
+        <td>  </td>
+    </tr>
+    {/if}
+    <tr style='background:#F0F0F0;'> <td colspan='3'></td></tr>
+    <tr>
+        <th> SUMA: </th>
+        <td colspan="2">  </td>
     </tr>
     <tr>
-        <td> Waga oddanego tucznika </td>
-        <td> {$details.avg_weight_pig } kg </td>
-    </tr>
-    <tr>
-        <td>Ilość zużytej paszy	</td> 
-        <td> {$details.zuPasza} </td>
-    </tr>
-    <tr>
-        <td>Ilość odebranego tucznika	</td> 
-        <td> {$details.recived_pigs} </td>
-    </tr>
-
-    </tr>
-    <tr style='background:#F0F0F0;'> <td colspan='2'></td></tr>
-    <tr><th colspan='2'>WYNIKI TUCZU</th></tr>
-    <tr>
-        <td> Średnie zużycie paszy</td>
-        <td> {$details.avg_use_feed_per_kg} </td>
-    </tr>
-    <tr>
-        <td> Upadki w % </td>
-        <td> {$details.dead_in_percent} </td>
-    </tr>
-    <tr>
-        <td> Średnia mięsność	</td>
-        <td> {$details.avg_meatens} % </td>
-    </tr>
-    <tr>
-        <td> Średnia wydajność </td>
-        <td> {$details.avg_eff } % </td>
-    </tr>
-    <tr>
-        <td> Czas tuczu </td>
-        <td> {$details.tucz_time } </td>
-    </tr>
-    <tr style='background:#F0F0F0;'> <td colspan='2'></td></tr>
-    <tr><th colspan='2'>     WYLICZENIA NETTO TUCZU W PLN </th></tr>
-    <tr>
-        <td> Wartość warchlaka </td>
-        <td> {$details.warch_cost} zł 	</td>
-    </tr>
-    <tr>
-        <td> Wartość paszy </td>
-        <td> {$details.feed_cost} zł 	</td>
-    </tr>
-    <tr>
-        <td> Wartość tucznika </td>
-        <td> {$details.tucz_cost} zł 	</td>
-    </tr>
-    <tr>
-        <td> Koszty leczenia </td>
-        <td> {$details.wet_cost} zł </td>
-    </tr>
-    <tr>
-        <td>RÓŻNICA: </td>
-        <td> {$details.diff}zł  </td>	
-    </tr>			
-    <tr style='background:#F0F0F0;'> <td colspan='2'></td></tr>
-     <tr><th colspan='2'> ROLNIK </th></tr>   
-	<tr>
-        <td>Podstawa </td>
-        <td> {$details.farmer_base } zł </td>
-    </tr>
-    <tr>
-        <td> Premia/ Potrącenia </td>
-        <td>  {$details.premia } zł </td>
-    </tr>
-    <tr>
-        <td> RAZEM: </td>
-        <td>  {$details.farmer_profit } zł </td>
+        <th> Za sztukę: </th>
+        <td colspan="2">  </td>
     </tr>
     </table>
 
