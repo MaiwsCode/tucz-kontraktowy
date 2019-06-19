@@ -1234,14 +1234,15 @@ class tuczkontraktowy extends Module {
         $details = array();
         $details['key'] = $record['kolczyk'];
         $details['date_start'] = $record['date_start'];
-        $details['farmer_name'] = $record["farmer"];
+        $rolnik = Utils_RecordBrowserCommon::get_record("company",$record['farmer']);
+        $details['farmer_name'] = $rolnik['company_name'];
 
         foreach ($upadki as $upadek){
             $details['iloscPadlych'] += $upadek['amount_fall'];
 
         }
 
-        $details['dateStart']  = $record['date_start'];
+        $details['dateStart']  = $record['data_start'];
         foreach ($dostawy as $dostawa){
             $details['sumaWarchlakow'] += $dostawa['amount'];
 
@@ -1267,7 +1268,7 @@ class tuczkontraktowy extends Module {
         }
         $details['dateEnd'] = $details['dateEnd'] / count($odbiory);
         $details['dateEnd'] = round($details['dateEnd'],0);
-        $details['czasTuczu'] = $this->time2string($details['dateEnd'] -  strtotime($record['date_start']));
+        $details['czasTuczu'] = $this->time2string($details['dateEnd'] -  strtotime($record['data_start']));
 
 
         foreach ($pasze as $pasza){
@@ -1281,19 +1282,23 @@ class tuczkontraktowy extends Module {
         $details['srZuzyciePaszy'] = $details['sumaPaszy'] /  ( $details['wagaTucznikow'] - $details['wagaWarchlakow']);
         $details['srZuzyciePaszy'] = round( $details['srZuzyciePaszy'],3);
         $details['srZuzyciePaszy'] = custom::change_spearator($details['srZuzyciePaszy'],".",",");
+
         $details['srWagaTucznika'] =  $details['wagaZywaTucznikow'] / $details['sumaTucznikow'];
+        $details['srWagaTucznika'] =   round( $details['srWagaTucznika'],2);
         $details['srWagaTucznika'] =  custom::change_spearator($details['srWagaTucznika'],".",",");
+
         $details['srWagaWarchlaka'] =  $details['wagaWarchlakow'] / $details['sumaWarchlakow'];
+        $details['srWagaWarchlaka'] =   round( $details['srWagaWarchlaka'],2);
         $details['srWagaWarchlaka'] =  custom::change_spearator($details['srWagaWarchlaka'],".",",");
+
         $details['pelnowartosciowe'] = $details['sumaTucznikow'] - $details['konfiskaty'];
         $details['upadki'] = ($details['iloscPadlych'] + $details['konfiskaty']) / $details['sumaWarchlakow'];
         $details['upadki'] = round( $details['upadki'] ,2);
+
         $details['upadki']  = custom::change_spearator( $details['upadki'] ,".",",");
 
         $details['nf'] = true;
-        $firma = Utils_RecordBrowserCommon::get_record('company', $record['farmer']);
-
-        if($zalozenia['deliverer'] == $record['farmer'] || $zalozenia['deliverer'] == $firma['parent_company'] ){
+        if($zalozenia['deliverer'] == $rolnik['farmer'] || $zalozenia['deliverer'] == $rolnik['parent_company'] ){
             $details['nf'] = true;
         }else{
             $details['nf'] = false;
