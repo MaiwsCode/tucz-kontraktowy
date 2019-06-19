@@ -96,6 +96,26 @@ class tuczkontraktowyCommon extends ModuleCommon {
 		}
 		return $ids;
 	}
+	public static function autoselect_fv($str, $crits, $format_callback) {
+        $str = explode(' ', trim($str));
+        foreach ($str as $k=>$v)
+            if ($v) {
+                $v = "%$v%";
+                $crits = Utils_RecordBrowserCommon::merge_crits($crits, array('(~fv_numer'=>$v));
+            }
+        $recs = Utils_RecordBrowserCommon::get_records('kontrakty_faktury', $crits, array(), array('fv_numer'=>'ASC'), 10);
+        $ret = array();
+        foreach($recs as $v) {
+            $ret[$v['id']."__".$v['fv_numer']] = call_user_func($format_callback, $v, true);
+        }
+        return $ret;
+    }
+    public static function fv_format($record, $nolink=false){
+
+        $ret = $record['fv_numer'];
+        return $ret;
+    }
+
 
 	public static function view_upadki($record, $mode){
 		if($mode == "adding" ){

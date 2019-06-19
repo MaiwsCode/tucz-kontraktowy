@@ -36,6 +36,9 @@ class tuczkontraktowy extends Module {
 
             )
         );
+        $allWeight = 0;
+        $allPrice = 0;
+        $allAmount = 0;
         foreach($warchlaki as $p){	
 				$r = $info->get_record($p['fakt_poz']);	
 				$ub = "";
@@ -53,7 +56,9 @@ class tuczkontraktowy extends Module {
                 }else{
                     $ub = "-".$ub;
                 }
-
+                $allWeight += custom::change_spearator($r['amount'],",",".");
+                $allAmount += $p['amount'];
+                $allPrice += custom::change_spearator($r['price'],",",".");
                 $gb->add_row( $link,
 							  $r['amount']." kg",
 							  $r->get_val('price'),
@@ -64,6 +69,18 @@ class tuczkontraktowy extends Module {
                     str_replace(".",",",$ub));
             
         }
+        $allWeight = number_format($allWeight,2,","," ");
+        $allPrice = number_format($allPrice,2,","," ");
+        $bold = "<span style='font-size:14px;font-weight:bold;'> ";
+        $boldEnd = "</span>";
+        $gb->add_row(
+          "",
+          "$bold Łączna waga: ".custom::change_spearator($allWeight,".",",")." kg $boldEnd",
+          "$bold Łączna cena: ".custom::change_spearator($allPrice,".",",")." zł $boldEnd",
+          "$bold Suma sztuk: ".$allAmount." $boldEnd",
+          "","","",""
+        );
+
         $this->display_module( $gb );
     }
 
@@ -231,14 +248,19 @@ class tuczkontraktowy extends Module {
                 $extra->get_val('price'),
                 custom::change_spearator( round(($price / $extra->amount),4),'.',',')." zł/kg"
             );
-        }   
+        }
+        $bold = "<span style='font-size:14px;font-weight:bold;'> ";
+        $boldEnd = "</span>";
+        $avg = $cena / $sumaKg;
+        $avg = round($avg,4);
         $sumaKg = number_format($sumaKg,2,","," ");
         $cena = number_format($cena,2,","," ");
+
         $gb->add_row(
             "",
-            "Łącznie kg: ".$sumaKg." kg",
-            "Łączna cena: ".$cena." zł",
-            ""
+            "$bold Łącznie kg: ".$sumaKg." kg $boldEnd",
+            "$bold Łączna cena: ".$cena." zł $boldEnd",
+            "$bold Średnia cena za kg: ".custom::change_spearator($avg,".",",")." zł/kg $boldEnd"
         );
         $this->display_module( $gb );
 
@@ -331,7 +353,7 @@ class tuczkontraktowy extends Module {
         //tuczniki
         $rbo = new RBO_RecordsetAccessor("kontrakty_faktury_odbior_tucznika");
         $info = new RBO_RecordsetAccessor("kontrakty_faktury_pozycje");
-        $odbior = $rbo->get_records(array('id_tuczu' => $record['id']),array(),array());
+        $odbior = $rbo->get_records(array('id_tuczu' => $record['id']),array(),array('date_recived'=>"ASC"));
         $gb = &$this->init_module('Utils/GenericBrowser', null, 'Odbiory');
 
         //warchlaki
@@ -364,6 +386,8 @@ class tuczkontraktowy extends Module {
                 array('name'=>'Mięsność', 'width'=>100/6),
             )
         );
+
+        $miesnosc = 0;
         foreach($odbior as $p){
             $extra = $info->get_record($p['fakt_poz']);
             $sum_weight_on_fakt += $extra['amount'];
@@ -376,18 +400,20 @@ class tuczkontraktowy extends Module {
                     $extra['amount']." kg",
                     $p['meatiness']."%"
                 );
-        
+            $miesnosc += custom::change_spearator($p['meatiness'],",",".");
         }
+        $miesnosc = $miesnosc / count($odbior);
+        $miesnosc = custom::change_spearator($miesnosc,".",",");
         $this->display_module( $gb );
 
         $difference = $pigs_amount - $falls_amount - $recived;
         $f1 = str_replace(".",",",round(($sum_alive_brutto / $recived),4));
-        $f2 = str_replace(".",",",round(($sum_weight_on_fakt / $sum_alive_brutto),4));
+        $f2 = str_replace(".",",",round(($sum_weight_on_fakt / $sum_alive_brutto),2)). "%";
         print("<table style='background: rgb(255,255,255);
                     background: linear-gradient(252deg, rgba(255,255,255,1) 0%, rgba(244,244,244,0.5606617647058824) 0%,
                     rgba(255,255,255,0.7511379551820728) 100%);text-align:center;width:60%;' class='ttable'>");
-        print("<tr><td>Suma oddanych</td><td> Pozostaje na stanie </td> <td> Średnia waga oddanej sztuki </td><td> Średnia wydajność </td></tr>");
-        print("<tr><td> $recived </td><td> $difference </td> <td> ".$f1." </td><td> ". $f2 ." </td></tr>");
+        print("<tr><td>Suma oddanych</td><td> Pozostaje na stanie </td> <td> Średnia waga oddanej sztuki </td><td> Średnia wydajność </td><td> Średnia mięsność </tr>");
+        print("<tr><td> $recived </td><td> $difference </td> <td> ".$f1." </td><td> ". $f2 ." </td> <td>".$miesnosc." %</td></tr>");
         print("</table>");
 
 
@@ -460,7 +486,7 @@ class tuczkontraktowy extends Module {
             || $record['typ_faktury'] == "OTH" || $record['typ_faktury'] == "TR" ) {
             $switched = false;
             $type = $record['typ_faktury'];
-            if($type != $_SESSION['oldType']){
+            if($type != $_SESSION['oldType'] && $_SESSION['oldType'] != ""){
                 $switched = true;
                 $rbo_ = new RBO_RecordsetAccessor(custom::table_names($_SESSION['oldType']));
                 $_records = $rbo_->get_records(array('fakt_poz' => $record['id'], 'id_tuczu' => $_SESSION['tucz_id']),array(),array());
@@ -757,11 +783,25 @@ class tuczkontraktowy extends Module {
         $min = $_SESSION['min'];
         $max = $_SESSION['max'];
         $form = $this->init_module('Libs/QuickForm');
+        eval_js("
+       document.onkeydown = function (e) {
+            if (e.which == 13) {
+             e.preventDefault();
+             var inputs = document.getElementsByClassName('pigCell');
+                for (var i = 0; i < inputs.length; i++) {
+                    if (document.activeElement == inputs[i]) {
+                        inputs[i+1].focus();
+                        break;   
+                    }
+                }
+            }
+        };
+        ");
         if($min) {
             $form->addElement('date', 'data', 'Data');
             $form->setDefaults(array('data' => date("d-m-Y")));
             for ($i = $min; $i <= $max; $i++) {
-                $form->addElement('text', 'pig_' . $i, 'Kolczyk ' . $i . " <span style='text-align:right;right:0;'></span>");
+                $form->addElement('text', 'pig_' . $i, 'Kolczyk ' . $i . " <span style='text-align:right;right:0;'></span>", array("class"=>"pigCell"));
             }
             $form->addElement('submit', 'submit', 'Dodaj');
             print("<h3> Dodaj przeważenia </h3>");
@@ -1120,6 +1160,8 @@ class tuczkontraktowy extends Module {
                 array('name'=>'Notatki', 'width'=>20),
             )
         );
+        $sumDown = 0;
+        $sumKg = 0;
         foreach($inne as $p){
             $btns = $p->record_link($edit_btn,false,'edit');
             $del = "<a " . $this->create_confirm_callback_href("Na pewno usunąć?",
@@ -1131,9 +1173,21 @@ class tuczkontraktowy extends Module {
                             $p->get_val('weight_fall'),
                             $p->get_val("note")
                         
-                        );
-        
+            );
+
+            $sumKg += custom::change_spearator($p['weight_fall'],",",".");
+            $sumDown += $p['amount_fall'];
+            $sumaKg = $sumaKg/$sumDown;
         }
+        $bold = "<span style='font-size:14px;font-weight:bold;'> ";
+        $boldEnd = "</span>";
+        $gb->add_row(
+            "",
+            "",
+            "$bold Padło: ".$sumDown. " szt. $boldEnd",
+            "$bold Średnia waga padłych: ".custom::change_spearator($sumKg,".",","). " kg $boldEnd",
+            ""
+        );
         $this->display_module( $gb );
     }
 
@@ -1231,45 +1285,57 @@ class tuczkontraktowy extends Module {
         $odbiory = Utils_RecordBrowserCommon::get_records("kontrakty_faktury_odbior_tucznika", array("id_tuczu" => $record['id']),array(),array());
         $pasze = Utils_RecordBrowserCommon::get_records("kontrakty_faktury_dostawa_paszy", array("id_tuczu" => $record['id']),array(),array());
         $upadki = Utils_RecordBrowserCommon::get_records("kontrakty_upadki", array("id_tuczu" => $record['id']),array(),array());
+        $inne = Utils_RecordBrowserCommon::get_records("kontrakty_inne", array("id_tuczu" => $record['id']),array(),array());
         $details = array();
         $details['key'] = $record['kolczyk'];
         $details['date_start'] = $record['date_start'];
         $rolnik = Utils_RecordBrowserCommon::get_record("company",$record['farmer']);
         $details['farmer_name'] = $rolnik['company_name'];
-
+        $details['farmer_name'] = preg_replace('/TN/', '', $details['farmer_name']);
+        $details['farmer_name'] = preg_replace('/[0-9]/', '', $details['farmer_name']);
+        $details['suma'] = 0;
+        $details['bazowaCena'] = substr($zalozenia['farmer'],0,-3);
+        $details['weterynariaCena'] = substr($zalozenia['med'],0,-3);
+        $details['iloscPadlych'] = 0;
         foreach ($upadki as $upadek){
             $details['iloscPadlych'] += $upadek['amount_fall'];
 
         }
+        $details['paszeKg'] = 0;
+        $details['paszePrice'] = 0;
 
+        $cenaPaszy = custom::change_spearator($zalozenia["price_starter"],",",".");
+        
         $details['dateStart']  = $record['data_start'];
         foreach ($dostawy as $dostawa){
             $details['sumaWarchlakow'] += $dostawa['amount'];
-
-
             $fvs = Utils_RecordBrowserCommon::get_records("kontrakty_faktury_pozycje" , array("id" => $dostawa['fakt_poz']),array(),array());
             foreach($fvs as $fv){
                 $details['wagaWarchlakow'] += custom::change_spearator($fv['amount'],",",".");
-
             }
-
         }
+
+        $optymalne = 0;
+        $zlaWaga = 0;
+        $kary = 0;
+
         foreach ($odbiory as $odbior){
             $details['sumaTucznikow'] += $odbior['amount'];
             $details['konfiskaty'] += $odbior['konfiskaty'];
             $details['dateEnd'] += strtotime($odbior['date_recived']);
             $details['wagaZywaTucznikow'] += $odbior['weight_alive_brutto'];
-
             $fvs = Utils_RecordBrowserCommon::get_records("kontrakty_faktury_pozycje" , array("id" => $odbior['fakt_poz']),array(),array());
             foreach($fvs as $fv){
                 $details['wagaTucznikow'] += custom::change_spearator($fv['amount'],",",".");
+                $optymalne += $odbior['premiowane'];
+                $kary += $odbior['suboptimal'];
+                $zlaWaga += $odbior['badweight'];
             }
-
         }
+
         $details['dateEnd'] = $details['dateEnd'] / count($odbiory);
         $details['dateEnd'] = round($details['dateEnd'],0);
         $details['czasTuczu'] = $this->time2string($details['dateEnd'] -  strtotime($record['data_start']));
-
 
         foreach ($pasze as $pasza){
 
@@ -1277,10 +1343,23 @@ class tuczkontraktowy extends Module {
             foreach($fvs as $fv){
                 $details['sumaPaszy'] += custom::change_spearator($fv['amount'],",",".");
             }
-
         }
-        $details['srZuzyciePaszy'] = $details['sumaPaszy'] /  ( $details['wagaTucznikow'] - $details['wagaWarchlakow']);
-        $details['srZuzyciePaszy'] = round( $details['srZuzyciePaszy'],3);
+
+        $details['inne'] = 0;
+        foreach ($inne as $inny){
+            $fvs = Utils_RecordBrowserCommon::get_records("kontrakty_faktury_pozycje" , array("id" => $inny['fakt_poz']),array(),array());
+            foreach($fvs as $fv){
+                $details['inne'] += custom::change_spearator($fv['amount'],",",".") * substr($fv['price'],0,-3) ;
+            }
+        }
+        
+        if( $details['inne'] != 0){
+        $details['inne'] =  $details['inne'] / $details['pelnowartosciowe'];
+        $details['inne'] = number_format($details['inne'], 2,',',' '). " zł/szt";
+        }else{ $details['inne'] = $details['inne'] . " zł/szt" ;}
+        $details['srZuzyciePaszy'] = $details['sumaPaszy'] /  ( $details['wagaZywaTucznikow'] - $details['wagaWarchlakow']);
+        $details['srZuzyciePaszy'] = round( $details['srZuzyciePaszy'],2);
+        $srZuzycie =  $details['srZuzyciePaszy'];
         $details['srZuzyciePaszy'] = custom::change_spearator($details['srZuzyciePaszy'],".",",");
 
         $details['srWagaTucznika'] =  $details['wagaZywaTucznikow'] / $details['sumaTucznikow'];
@@ -1294,17 +1373,108 @@ class tuczkontraktowy extends Module {
         $details['pelnowartosciowe'] = $details['sumaTucznikow'] - $details['konfiskaty'];
         $details['upadki'] = ($details['iloscPadlych'] + $details['konfiskaty']) / $details['sumaWarchlakow'];
         $details['upadki'] = round( $details['upadki'] ,2);
+        $details['upadkiWartosc'] = $details['upadki'] * $details['pelnowartosciowe'];
+        $details['upadkiWartosc'] = round( $details['upadkiWartosc'] ,2);
+        $details['suma'] += $details['upadkiWartosc'];
+        $details['upadkiWartosc'] = number_format($details['upadkiWartosc'], 2,',',' ');
 
+        $details['bazowaWartosc'] = custom::change_spearator($details['bazowaCena'],",",".") * $details['pelnowartosciowe']  ;
+        $details['weterynariaWartosc'] = custom::change_spearator($details['weterynariaCena'],",",".") * $details['pelnowartosciowe']  ;
+        $details['suma'] += $details['bazowaWartosc'];
+        $details['bazowaWartosc'] = number_format($details['bazowaWartosc'], 2,',',' ');
+        $details['suma'] += $details['weterynariaWartosc'];
+        $details['weterynariaWartosc'] = number_format($details['weterynariaWartosc'], 2,',',' ');
         $details['upadki']  = custom::change_spearator( $details['upadki'] ,".",",");
 
-        $details['nf'] = true;
-        if($zalozenia['deliverer'] == $rolnik['farmer'] || $zalozenia['deliverer'] == $rolnik['parent_company'] ){
+        $details['premiowane'] = $optymalne;
+        $details['suboptimal'] = $kary; 
+        $details['badweight'] = $zlaWaga;
+
+        $details['premiowaneWartosc'] = $optymalne * 2;
+        $details['suboptimalWartosc'] = $kary * -5; 
+        $details['badweightWartosc'] = $zlaWaga * -10;
+
+        $details['suma'] += $details['premiowaneWartosc'];
+        $details['suma'] += $details['suboptimalWartosc'];
+        $details['suma'] += $details['badweightWartosc'];
+
+        $details['premiowaneWartosc'] = number_format($details['premiowaneWartosc'], 2,',',' ');
+        $details['suboptimalWartosc'] = number_format($details['suboptimalWartosc'], 2,',',' ');
+        $details['badweightWartosc'] = number_format($details['badweightWartosc'], 2,',',' ');
+        
+
+        if($zalozenia['deliverer'] == $record['farmer'] || $zalozenia['deliverer'] == $rolnik['parent_company'] ){
+            $waga = $details['wagaZywaTucznikow'] ;
+            $details['nfPrice'] = 0;
+            $waga = $waga / $details['pelnowartosciowe'];
             $details['nf'] = true;
+            if($waga >= 126.1){
+                $wspolczynnik = 2.90;
+            }
+            else if($waga >= 122.1 && $waga <= 126){
+                $wspolczynnik = 2.85;
+            }
+            else if ($waga >= 118.1 && $waga <= 122){
+                $wspolczynnik = 2.80;
+            }
+            else if($waga >= 115.1 && $waga <= 118){
+                $wspolczynnik = 2.75;
+            }
+            else if($waga >= 110.1 && $waga <= 115){
+                $wspolczynnik = 2.70;
+            }
+            $details['nfPrice'] = (custom::change_spearator($details['wagaZywaTucznikow'],",",".") - custom::change_spearator($details['wagaWarchlakow'],",",".") 
+            * $wspolczynnik) * custom::change_spearator($cenaPaszy,",",".");
+            $details['nfPrice'] = round($details['nfPrice'],2);
+            $details['suma'] += $details['nfPrice'];
+            $details['nfPrice'] = number_format($details['nfPrice'], 2,',',' ');
+            $details['nfPrice'] = custom::change_spearator($details['nfPrice'] ,".",",")." zł";
+
         }else{
+            $premia = 0;
+            $details['nfPrice'] = 0;
+            $waga = $details['wagaZywaTucznikow'] ;
+            $waga = $waga / $details['pelnowartosciowe'];
+            $wspolczynnik = 0;
+            $details['nf'] = true;
+            if($waga >= 126.1){
+                $wspolczynnik = 2.90;
+            }
+            else if($waga >= 122.1 && $waga <= 126){
+                $wspolczynnik = 2.85;
+            }
+            else if ($waga >= 118.1 && $waga <= 122){
+                $wspolczynnik = 2.80;
+            }
+            else if($waga >= 115.1 && $waga <= 118){
+                $wspolczynnik = 2.75;
+            }
+            else if($waga >= 110.1 && $waga <= 115){
+                $wspolczynnik = 2.70;
+            }
             $details['nf'] = false;
+            $avg = $wspolczynnik - $srZuzycie;
+            if($avg > 0){
+                $avg = $avg / 0.05;
+                $avg = $avg + 0.05;
+                if(!is_int($avg)){
+                    $avg = floor($avg);
+                }
+                $premia = $avg * 3.0;
+            }
+            else{
+                $avg = $avg / -0.03;
+                $avg = $avg + 0.03;
+                if(!is_int($avg)){
+                    $avg = floor($avg);
+                }
+                $premia = $avg * -6.0;
+            }
+            $details['nfPrice'] = $details['pelnowartosciowe'] * $premia;
         }
-
-
+        $details['sumaperone'] = $details['suma'] / $details['pelnowartosciowe'];
+        $details['sumaperone'] = number_format($details['sumaperone'], 2,',',' '). " zł/szt";
+        $details['suma'] = number_format($details['suma'], 2,',',' '). " zł";
         $theme->assign("details", $details);
         $theme->display('raport_rolnik');
     }
@@ -1348,24 +1518,91 @@ class tuczkontraktowy extends Module {
 
 
     public function body(){
-        Base_ThemeCommon::install_default_theme($this->get_type());
-        custom::create_new_faktura();
-        Epesi::js('jq(".name").html("");
-        jq(".name").html("<div> Tucze kontraktowe </div>");');
-        $rs = new RBO_RecordsetAccessor('kontrakty');
-        $rb = $rs->create_rb_module ( $this );
-        $this->display_module ( $rb);
-        Base_ActionBarCommon::add(
-            'add',
-            'Dodaj nową fakture', 
-            Utils_RecordBrowserCommon::create_new_record_href('kontrakty_faktury',$def=array(),$id='none'),
-                null,
-                5
+        $fcallback = array('tuczkontraktowyCommon','fv_format');
+        $form = $this->init_module('Libs/QuickForm'); 
+        $form->addElement('autoselect', 'faktura', __('Szukaj tuczy przez nr faktury'), array(),
+            array(array('tuczkontraktowyCommon','autoselect_fv'), array($crits, $fcallback)), $fcallback);
+        $form->addElement("submit","submit","Szukaj");
+        print('<table class="letters-search nonselectable" border="0" cellpadding="0" cellspacing="0">');
+            print("<tbody><tr><td style='margin-right:25px; float:right;'>");
+                $form->display();
+            print("</td></tr></tbody>");
+        print("</table>");
+        if($form->validate()){
+            $values = $form->exportValues();
+            Base_ThemeCommon::install_default_theme($this->get_type());
+            custom::create_new_faktura();
+            Epesi::js('jq(".name").html("");
+            jq(".name").html("<div> Tucze kontraktowe </div>");');
+            $gb = &$this->init_module('Utils/GenericBrowser', null,"FVS");
+            $gb->set_table_columns(
+                array(
+                    array('name'=>'', 'width'=>5),				
+                    array('name'=>'Data wstawienia', 'width'=>12),
+                    array('name'=>'Rolnik', 'width'=>12),
+                    array('name'=>'Notatka', 'width'=>12),
+                    array('name'=>'Kolczyk', 'width'=>12),
+                    array('name'=>'Nazwa/Numer', 'width'=>12),
+                    array('name'=>'Status', 'width'=>12),
+                )
             );
-    }
-    public function settings(){
-    }    
 
+            $kontrakty = new RBO_RecordsetAccessor('kontrakty');
+            $faktury = new RBO_RecordsetAccessor('kontrakty_faktury_pozycje');
+            if($values['faktura'] != ""){
+                $recordsFaktury = $faktury->get_records(array("faktura"=>$values['faktura']),array(),array());
+                $tucze = array();
+                foreach($recordsFaktury as $r){
+                    $tucz = new RBO_RecordsetAccessor(custom::table_names($r['typ_faktury']));
+                    $lista = $tucz->get_records(array("fakt_poz"=> $r['id']),array(),array());
+                    foreach($lista as $l){
+                        $tucze[] = $l['id_tuczu'];
+                    }
+                }
+                $lista = $kontrakty->get_records(array("id"=>$tucze),array(),array());
+            }else{
+                $lista = $kontrakty->get_records(array(),array(),array());
+            }
+            $view_btn = "<img border='0' src='data/Base_Theme/templates/default/Utils/GenericBrowser/view.png' alt='Podgląd' />";
+            $edit_btn = "<img border='0' src='data/Base_Theme/templates/default/Utils/Calendar/edit.png' alt='Edytuj' />";
+            foreach($lista as $l){
+                $gb->add_row(
+                    $l->record_link($view_btn,$nolink = false,$action = 'view')." ".$l->record_link($edit_btn,$nolink = false,$action = 'edit'),
+                    $l['data_start'],
+                    $l->get_val("farmer"),
+                    $l['note'],
+                    $l['kolczyk'],
+                    $l['name_number'],
+                    $l->get_val("status")
+                );
+            }
+            $this->display_module($gb);
+            Base_ActionBarCommon::add(
+                'add',
+                'Dodaj nową fakture', 
+                Utils_RecordBrowserCommon::create_new_record_href('kontrakty_faktury',$def=array(),$id='none'),
+                    null,
+                    5
+            );
+        }
+        else{
+            Base_ThemeCommon::install_default_theme($this->get_type());
+            custom::create_new_faktura();
+            Epesi::js('jq(".name").html("");
+            jq(".name").html("<div> Tucze kontraktowe </div>");');
+            $rs = new RBO_RecordsetAccessor('kontrakty');
+            $rb = $rs->create_rb_module ( $this );
+            $this->display_module ( $rb);
+            Base_ActionBarCommon::add(
+                'add',
+                'Dodaj nową fakture', 
+                Utils_RecordBrowserCommon::create_new_record_href('kontrakty_faktury',$def=array(),$id='none'),
+                    null,
+                    5
+            );
+        }
+    }
+    public function settings(){}    
 }
 class custom{
     public static function createProgressBar($value){
@@ -1574,8 +1811,8 @@ class Raporty{
         $this->diff = ($this->tucz_cost - $this->feed_cost - $this->warch_cost - $this->wet_cost);
         $this->premia = round((floatval(substr($this->zalozenia['farmer'], 0, -3)) * -1 + ($this->diff / $this->amount_recived)),2);
         $this->weight_st =  ($this->zalozenia['starter_to'] - $this->zalozenia['weight_pig_start']) * $this->zalozenia['average_use_st'];
-        $this->weight_gr =  ($this->zalozenia['grower_to'] - $this->zalozenia['grower_from']) * $this->zalozenia['average_use_gr'];;
-        $this->weight_fin = ($this->zalozenia['weight_pig_end'] - $this->zalozenia['finisher_from']) * $this->zalozenia['average_use_fin'];;
+        $this->weight_gr =  ($this->zalozenia['grower_to'] - $this->zalozenia['grower_from']) * $this->zalozenia['average_use_gr'];
+        $this->weight_fin = ($this->zalozenia['weight_pig_end'] - $this->zalozenia['finisher_from']) * $this->zalozenia['average_use_fin'];
         $this->price_feed = 
         ($this->weight_st * $this->currency_to_float($this->zalozenia['price_starter'])) + 
         ($this->weight_gr * $this->currency_to_float($this->zalozenia['price_grower']))+ 

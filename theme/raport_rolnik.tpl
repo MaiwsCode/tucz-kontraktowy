@@ -9,7 +9,7 @@
     </tr>
     <tr>
         <td> {$details.farmer_name} </td>
-        <td> {$details.date_start} </td>
+        <td> {$details.dateStart} </td>
         <td> {$details.sumaWarchlakow} </td>
         <td> {$details.key} </td>
     </tr>
@@ -30,15 +30,15 @@
     </tr>
     <tr>
         <td> Czas tuczu	</td>
-        <td> {$details.czasTuczu}  </td>
+        <td> {$details.czasTuczu} dni </td>
     </tr>
     <tr>
         <td> Koszt leczenia na sztukę pełnowartościową	</td>
-        <td> </td>
+        <td> {$details.inne} </td>
     </tr>
     <tr>
         <td> Średnie zużycie paszy	</td>
-        <td> {$details.srZuzyciePaszy}  </td>
+        <td> {$details.srZuzyciePaszy} kg  </td>
     </tr>
 </table>
 <table class="ttable ttable-hover ttable-bordered" style="margin-top:15px;margin-bottom:15px;user-select: text;width:60%;">
@@ -51,47 +51,42 @@
     </tr>
     <tr>
         <td> Stawka bazowa </td>
-        <td> {$details.pelnowartosciowe}  </td>
-        <td>  </td>
-        <td>  </td>
+        <td> {$details.pelnowartosciowe}  szt </td>
+        <td> {$details.bazowaCena} zł/szt </td>
+        <td> {$details.bazowaWartosc} zł </td>
     </tr>
     <tr>
         <td> Weterynaria </td>
-        <td> {$details.pelnowartosciowe} </td>
-        <td>  </td>
-        <td>  </td>
+        <td> {$details.pelnowartosciowe} szt </td>
+        <td> {$details.weterynariaCena} zł/szt </td>
+        <td> {$details.weterynariaWartosc} zł </td>
     </tr>
     <tr>
         <td> Upadki </td>
-        <td> {$details.pelnowartosciowe}  </td>
-        <td> {$details.upadki}   </td>
-        <td>  </td>
+        <td> {$details.pelnowartosciowe} szt </td>
+        <td> {$details.upadki}  zł </td>
+        <td> {$details.upadkiWartosc} zł </td>
     </tr>
     <tr>
         <td> Premia wagi optymalnej </td>
-        <td>  </td>
-        <td> 2 </td>
-        <td>  </td>
+        <td>  {$details.premiowane}  szt</td>
+        <td> 2 zł</td>
+        <td> {$details.premiowaneWartosc} zł</td>
     </tr>
     <tr>
         <td> Kara wagi słabe</td>
-        <td>  </td>
-        <td> -5 </td>
-        <td>  </td>
+        <td>  {$details.suboptimal}  szt </td>
+        <td> -5 zł</td>
+        <td> {$details.suboptimalWartosc} zł</td>
     </tr>
 
     <tr>
-        <td> Kara wagi krytyczne + </td>
-        <td>  </td>
-        <td> -10 </td>
-        <td>  </td>
+        <td> Kara wagi krytyczne +- </td>
+        <td> {$details.badweight} szt</td>
+        <td> -10 zł</td>
+        <td> {$details.badweightWartosc} zł</td>
     </tr>
-    <tr>
-        <td> Kara wagi krytyczne - </td>
-        <td>  </td>
-        <td> -10 </td>
-        <td>  </td>
-    </tr>
+
 </table>
     <table class="ttable ttable-hover ttable-bordered" style="margin-top:15px;margin-bottom:15px;user-select: text;width:60%;">
     <tr>
@@ -101,24 +96,22 @@
         {if $details.nf }
     <tr>
         <td> Nowa formuła - NF </td>
-        <td>  </td>
-        <td>  </td>
+        <td colspan='2'> {$details.nfPrice} </td>
     </tr>
     {else}
     <tr>
         <td> Formuła Pełna - PF  </td>
-        <td>  </td>
-        <td>  </td>
+        <td colspan='2'> {$details.nfPrice}  </td>
     </tr>
     {/if}
     <tr style='background:#F0F0F0;'> <td colspan='3'></td></tr>
     <tr>
         <th> SUMA: </th>
-        <td colspan="2">  </td>
+        <td colspan="2"> {$details.suma}  </td>
     </tr>
     <tr>
         <th> Za sztukę: </th>
-        <td colspan="2">  </td>
+        <td colspan="2"> {$details.sumaperone} </td>
     </tr>
     </table>
 
