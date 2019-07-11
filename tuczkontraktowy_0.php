@@ -1518,6 +1518,22 @@ class tuczkontraktowy extends Module {
 
 
     public function body(){
+
+		$tabbed_browser = $this->init_module('Utils/TabbedBrowser');
+		$tabbed_browser->set_tab(__('Tucze'), array($this, 'main'));
+		$tabbed_browser->set_tab(__('Zestawienie'), array($this, 'reports'));
+		$this->display_module($tabbed_browser);
+
+    }
+    public function setStatus($val){
+        if($val == ""){
+            return "checked";
+        }
+        else{
+            return "";
+        }
+    }
+    public function main(){
         $fcallback = array('tuczkontraktowyCommon','fv_format');
         $form = $this->init_module('Libs/QuickForm'); 
         $form->addElement('autoselect', 'faktura', __('Szukaj tuczy przez nr faktury'), array(),
@@ -1526,15 +1542,15 @@ class tuczkontraktowy extends Module {
         print('<table class="letters-search nonselectable" border="0" cellpadding="0" cellspacing="0">');
             print("<tbody><tr><td style='margin-right:25px; float:right;'>");
                 $form->display();
-            print("</td></tr></tbody>");
-        print("</table>");
         if($form->validate()){
+            print("</td></tr></tbody>");
+            print("</table>");
             $values = $form->exportValues();
             Base_ThemeCommon::install_default_theme($this->get_type());
             custom::create_new_faktura();
             Epesi::js('jq(".name").html("");
             jq(".name").html("<div> Tucze kontraktowe </div>");');
-            $gb = &$this->init_module('Utils/GenericBrowser', null,"FVS");
+            $gb = $this->init_module('Utils/GenericBrowser', null,"FVS");
             $gb->set_table_columns(
                 array(
                     array('name'=>'', 'width'=>5),				
@@ -1546,8 +1562,7 @@ class tuczkontraktowy extends Module {
                     array('name'=>'Status', 'width'=>12),
                 )
             );
-
-            $kontrakty = new RBO_RecordsetAccessor('kontrakty');
+            $contracts = new RBO_RecordsetAccessor('kontrakty');
             $faktury = new RBO_RecordsetAccessor('kontrakty_faktury_pozycje');
             if($values['faktura'] != ""){
                 $recordsFaktury = $faktury->get_records(array("faktura"=>$values['faktura']),array(),array());
@@ -1559,9 +1574,9 @@ class tuczkontraktowy extends Module {
                         $tucze[] = $l['id_tuczu'];
                     }
                 }
-                $lista = $kontrakty->get_records(array("id"=>$tucze),array(),array());
+                $lista = $contracts->get_records(array("id"=>$tucze),array(),array());
             }else{
-                $lista = $kontrakty->get_records(array(),array(),array());
+                $lista = $contracts->get_records(array(),array(),array());
             }
             $view_btn = "<img border='0' src='data/Base_Theme/templates/default/Utils/GenericBrowser/view.png' alt='Podgląd' />";
             $edit_btn = "<img border='0' src='data/Base_Theme/templates/default/Utils/Calendar/edit.png' alt='Edytuj' />";
@@ -1586,13 +1601,6 @@ class tuczkontraktowy extends Module {
             );
         }
         else{
-            Base_ThemeCommon::install_default_theme($this->get_type());
-            custom::create_new_faktura();
-            Epesi::js('jq(".name").html("");
-            jq(".name").html("<div> Tucze kontraktowe </div>");');
-            $rs = new RBO_RecordsetAccessor('kontrakty');
-            $rb = $rs->create_rb_module ( $this );
-            $this->display_module ( $rb);
             Base_ActionBarCommon::add(
                 'add',
                 'Dodaj nową fakture', 
@@ -1600,9 +1608,141 @@ class tuczkontraktowy extends Module {
                     null,
                     5
             );
+            Base_ThemeCommon::install_default_theme($this->get_type());
+            custom::create_new_faktura();
+           Epesi::js('jq(".name").html("");
+                 jq(".name").html("<div> Tucze kontraktowe </div>");');
+            $checked = null;
+            $crits = array('status'=> array('Planned','InProgress','Accepted'));
+             if($this->get_module_variable("customStatus")){
+                $checked = $this->get_module_variable("customStatus");
+            }else{
+                $this->set_module_variable("customStatus",array("checked","checked","checked","",""));
+                $checked = $this->get_module_variable("customStatus");
+            }
+            if($_REQUEST['filterStatus'] == "Planned"){
+                $checked[0] = $this->setStatus( $checked[0]);
+                $this->set_module_variable("customStatus",$checked);
+            }
+            else if($_REQUEST['filterStatus'] == "Accepted"){
+                $checked[1] = $this->setStatus( $checked[1]);
+                $this->set_module_variable("customStatus",$checked);
+            }
+            else if($_REQUEST['filterStatus'] == "InProgress"){
+                $checked[2] = $this->setStatus( $checked[2]);
+                $this->set_module_variable("customStatus",$checked);
+            }
+            else if($_REQUEST['filterStatus'] == "Ended"){
+                $checked[3] = $this->setStatus( $checked[3]);
+                $this->set_module_variable("customStatus",$checked);
+            }
+            else if($_REQUEST['filterStatus'] == "Done"){
+                $checked[4] = $this->setStatus( $checked[4]);
+                $this->set_module_variable("customStatus",$checked);
+            }
+            if($_REQUEST['filterStatus'] || $this->get_module_variable("customStatus") ){
+                $crits['status'] = array();
+                if($checked[0] == "checked"){ $crits['status'][] = "Planned"; }
+                if($checked[1] == "checked"){ $crits['status'][] = "Accepted"; }
+                if($checked[2] == "checked"){ $crits['status'][] = "InProgress"; }
+                if($checked[3] == "checked"){ $crits['status'][] = "Ended"; }
+                if($checked[4] == "checked"){ $crits['status'][] = "Done"; }
+            }
+            
+            $hrefPlan = $this->create_href(array("filterStatus"=>"Planned"));
+            $hrefAccept = $this->create_href(array("filterStatus"=>"Accepted"));
+            $hrefInProg = $this->create_href(array("filterStatus"=>"InProgress"));
+            $hrefEnd = $this->create_href(array("filterStatus"=>"Ended"));
+            $hrefRozl = $this->create_href(array("filterStatus"=>"Done"));
+
+
+            print("</td></td><td style='margin-right:25px; float:right;'>");
+            print("<input type=\"checkbox\" ".$checked[0]."  $hrefPlan />Planowany");
+            print("<input type=\"checkbox\" ".$checked[1]." $hrefAccept '/>Zatwierdzony");
+            print("<input type=\"checkbox\" ".$checked[2]." $hrefInProg  '/>W trakcie");
+            print("<input type=\"checkbox\" ".$checked[3]." $hrefEnd '/>Zakończony");
+            print("<input type=\"checkbox\" ".$checked[4]." $hrefRozl />Rozliczony");
+            print("</td></tr></tbody>");
+            print("</table>");
+
+
+            $gb =  $this->init_module('Utils/GenericBrowser',null, 'kontrakty');
+            $gb->set_table_columns(
+                array(
+                    array('name'=>'','width' => 5),				
+                    array('name'=>'Data wstawienia','search'=>1,'sort'=>1),
+                    array('name'=>'Rolnik','search'=>1),
+                    array('name'=>'Notatka','search'=>1),
+                    array('name'=>'Kolczyk','search'=>1),
+                    array('name'=>'Nazwa/Numer','search'=>1),
+                    array('name'=>'Status','search'=>1),
+
+                )
+            );
+            $view_btn = "<img border='0' src='data/Base_Theme/templates/default/Utils/GenericBrowser/view.png' alt='Podgląd' />";
+            $edit_btn = "<img border='0' src='data/Base_Theme/templates/default/Utils/Calendar/edit.png' alt='Edytuj' />";
+            $contractsRbo = new RBO_RecordsetAccessor('kontrakty');
+            $contracts = $contractsRbo->get_records($crits,array(),array("data_start"=>"DESC"));
+            foreach($contracts as $l){
+                $gb->add_row(
+                    $l->record_link($view_btn,$nolink = false,$action = 'view')." ".$l->record_link($edit_btn,$nolink = false,$action = 'edit'),
+                    $l['data_start'],
+                    $l->get_val("farmer"),
+                    $l['note'],
+                    $l['kolczyk'],
+                    $l['name_number'],
+                    $l->get_val("status")
+                );
+            }
+            $this->display_module($gb,array(true),'automatic_display');
         }
     }
     public function settings(){}    
+    public function reports(){
+        $currentNumWeek = (date("W"));
+        $weeks = [];
+        $contractsArrayIds = array();
+        $weeksSums = array();
+        $tucze = array();
+        for($i = ($currentNumWeek - 4); $i<=$currentNumWeek +2; $i++){
+            $weeksSums[$i] = 0;
+            if($i == $currentNumWeek){
+                $weeks[$i] = array("week" => $i, "current" => true);
+            }else{
+                $weeks[$i] = array("week" => $i);
+            }
+        }
+        foreach($weeks as $key => $value){
+            $w = $key;
+            $year = date("Y");
+            $dateStart = date("Y-m-d" , strtotime($year."W".$w));
+            $dateEnd =  date("Y-m-d", strtotime($dateStart." +6days"));
+            $contractsRbo = new RBO_RecordsetAccessor('kontrakty');
+            $contracts = $contractsRbo->get_records(array(">=data_start" => $dateStart, "<=data_start" => $dateEnd),array(),array());
+            foreach($contracts as $contract){
+                $reciveRbo = new RBO_RecordsetAccessor('kontrakty_faktury_dostawa_warchlaka');
+                $recived  = $reciveRbo->get_records(array("id_tuczu" => $contract['id']),array(),array());
+                $contractsArrayIds[$contract['id']]['farmer']['name'] = $contract->record_link($contract->get_val("farmer",$nolink=true),false);
+                $contractsArrayIds[$contract['id']]['farmer']['time'] = floor((strtotime(date("Y-m-d")) - strtotime($contract['data_start'])) / (24*60*60));
+                foreach($recived as $recive){
+                    $contractsArrayIds[$contract['id']][$key] += $recive['amount'];
+                    $weeksSums[$w] +=  $recive['amount'];
+                }
+            }
+        }
+        foreach($weeksSums as $key => $value){
+            $weeksSums[$key] =  number_format($value, 0, ',', ' ');
+        }
+        Base_ThemeCommon::install_default_theme($this->get_type());
+        $theme = $this->init_module('Base/Theme');
+        $theme->assign("sums", $weeksSums);
+        print_r($contractsArrayIds);
+        $theme->assign("contracts", $contractsArrayIds);
+        $theme->assign("weeks", $weeks);
+        $theme->display("raport");
+
+
+    }     
 }
 class custom{
     public static function createProgressBar($value){
