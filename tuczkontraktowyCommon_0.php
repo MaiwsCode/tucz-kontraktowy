@@ -106,7 +106,7 @@ class tuczkontraktowyCommon extends ModuleCommon {
         $recs = Utils_RecordBrowserCommon::get_records('kontrakty_faktury', $crits, array(), array('fv_numer'=>'ASC'), 10);
         $ret = array();
         foreach($recs as $v) {
-            $ret[$v['id']."__".$v['fv_numer']] = call_user_func($format_callback, $v, true);
+            $ret[$v['fv_numer']."__".$v['fv_numer']] = call_user_func($format_callback, $v, true);
         }
         return $ret;
     }

@@ -222,6 +222,7 @@ class tuczkontraktowy extends Module {
         $gb->set_table_columns(
             array(
                 array('name'=>'Pasza', 'width'=>10 ),
+                array('name' => "Data", 'width' => 10),
                 array('name'=>'Ilość', 'width'=>45),
                 array('name'=>'Cena netto', 'width'=>45),
                 array('name'=>'Cena jednostkowa', 'width'=>45)
@@ -229,6 +230,7 @@ class tuczkontraktowy extends Module {
         );
         $sumaKg = 0;
         $cena = 0;
+        $customPasze = array();
         foreach($pasze as $p){
             $feed = $p['feed_type'];
             $exist_types[$feed] =  $feed;
@@ -241,14 +243,35 @@ class tuczkontraktowy extends Module {
             $price_avg_weight[$feed] +=  floatval($price);
             $cena += floatval($price);
             $price_avg[$feed] += floatval(str_replace(",",".",substr($extra['price'], 0, -3)));
+            $fvRbo = new RBO_RecordsetAccessor("kontrakty_faktury");
+            $data = $fvRbo->get_record($extra['faktura']);
+            $date = $data['date'];
+            $customPasze[$p['id']]['record'] = $info->get_record($p['fakt_poz'])->create_default_linked_label(false,  false)." - ".$p['feed_type'];
+            $customPasze[$p['id']]['amount'] = $extra['amount'];
+            $customPasze[$p['id']]['price'] = number_format($price,2,","," ");;
+            $customPasze[$p['id']]['date'] = $date;
+            if($data != null){ 
+                $customPasze[$p['id']]['dateFormated'] = $data->get_val("date",false);
+            }
+            $customPasze[$p['id']]['avg'] =  custom::change_spearator( round(($price / $extra->amount),4),'.',','). " zł/kg";
+        }
 
+        usort($customPasze, function ($item1, $item2) {
+            if ($item1['date'] == $item2['date']) return 0;
+            return $item1['date'] > $item2['date'] ? -1 : 1;
+        });
+
+        foreach($customPasze as $cp){
             $gb->add_row(
-                $info->get_record($p['fakt_poz'])->create_default_linked_label(false,  false)." - ".$p['feed_type'],
-                $extra['amount']." kg",
-                $extra->get_val('price'),
-                custom::change_spearator( round(($price / $extra->amount),4),'.',',')." zł/kg"
+                $cp['record'],
+                $cp['dateFormated'],
+                $cp['amount']." kg",
+                $cp['price'],
+                $cp["avg"]
             );
         }
+
+
         $bold = "<span style='font-size:14px;font-weight:bold;'> ";
         $boldEnd = "</span>";
         $avg = $cena / $sumaKg;
@@ -257,7 +280,7 @@ class tuczkontraktowy extends Module {
         $cena = number_format($cena,2,","," ");
 
         $gb->add_row(
-            "",
+            "","",
             "$bold Łącznie kg: ".$sumaKg." kg $boldEnd",
             "$bold Łączna cena: ".$cena." zł $boldEnd",
             "$bold Średnia cena za kg: ".custom::change_spearator($avg,".",",")." zł/kg $boldEnd"
@@ -318,6 +341,7 @@ class tuczkontraktowy extends Module {
                 array('name'=>'Odbiorca', 'width'=>20),
             )
         );
+        $price = 0;
         foreach($trans as $p){
             $r = $info->get_record($p['fakt_poz']);
             $link = $info->get_record($p['fakt_poz'])->create_default_linked_label(false,  false);
@@ -325,16 +349,27 @@ class tuczkontraktowy extends Module {
 
             $reciver = new RBO_RecordsetAccessor('company');
             $rec = $reciver->get_record($p['company']);
-
+            $price += $p['netto'];
             $gb->add_row(
                 $link,
                 $p->date,
                 $p->amount,
-                $p->netto." zł",
+                number_format($p->netto,2,","," "),
                 $rec->company_name
             );
         
         }   
+        $price = number_format($price,2,","," ");
+        $bold = "<span style='font-size:14px;font-weight:bold;'> ";
+        $boldEnd = "</span>";
+        $gb->add_row(
+          "",
+          "",
+          "",
+          "$bold Łączny koszt: ".$price,
+          ""
+        );
+
         $this->display_module( $gb );
     }
 
@@ -403,12 +438,15 @@ class tuczkontraktowy extends Module {
             $miesnosc += custom::change_spearator($p['meatiness'],",",".");
         }
         $miesnosc = $miesnosc / count($odbior);
+        $miesnosc = round($miesnosc,2);
         $miesnosc = custom::change_spearator($miesnosc,".",",");
         $this->display_module( $gb );
 
         $difference = $pigs_amount - $falls_amount - $recived;
-        $f1 = str_replace(".",",",round(($sum_alive_brutto / $recived),4));
-        $f2 = str_replace(".",",",round(($sum_weight_on_fakt / $sum_alive_brutto),2)). "%";
+        $f1 = round(($sum_alive_brutto / $recived),4);
+        $f2 = round(($sum_weight_on_fakt / $sum_alive_brutto),2);
+        $f1 = custom::change_spearator($f1,".",",");
+        $f2 = custom::change_spearator($f2,".",",");
         print("<table style='background: rgb(255,255,255);
                     background: linear-gradient(252deg, rgba(255,255,255,1) 0%, rgba(244,244,244,0.5606617647058824) 0%,
                     rgba(255,255,255,0.7511379551820728) 100%);text-align:center;width:60%;' class='ttable'>");
@@ -607,7 +645,10 @@ class tuczkontraktowy extends Module {
                 $waga_before = $rbo->get_records(array('id_tuczu' => $record['id'] ,'date_weight' => $daty[$i-1][0] ),array(),array('pig_number'=> "ASC"));
                 $waga = $rbo->get_records(array('id_tuczu' => $record['id'] ,'date_weight' => $daty[$i][0] ),array(),array('pig_number'=> "ASC"));
                 $avg_grow = 0;
+                $avgFirst = 0;
+                $avgSecond = 0;
                 foreach ($waga as $pig){
+                    $avgFirst += custom::change_spearator($pig->weight, "," , "." );
                     foreach ($waga_before as $before){
                         if($before->pig_number == $pig->pig_number){
                             $diffrence = custom::change_spearator($pig->weight, "," , "." ) - custom::change_spearator($before->weight, "," , "." );
@@ -616,6 +657,11 @@ class tuczkontraktowy extends Module {
                         }
                     }
                 }
+                foreach ($waga_before as $before){
+                    $avgSecond += custom::change_spearator($before->weight, "," , "." );
+                }
+                $avgFirst = $avgFirst /count($waga);
+                $avgSecond = $avgSecond / count($waga_before);
                 $avg_grow = $avg_grow / count($waga);
                 if($i<1){
                     $gb->add_row(   
@@ -633,13 +679,16 @@ class tuczkontraktowy extends Module {
                     $days= floor($days/(60*60*24));
                     $avg_grow = round($avg_grow,4);
                     $perDay = $avg_grow / $days;
+                    $avgs = $avgFirst -  $avgSecond;
+                    $avgs = $avgs / $days;
+                    $avgs = round($avgs,4);
                     $perDay = round($perDay,4);
                     $gb->add_row(   
                         "<a style='margin-left:10px;' ". 
                             $this->create_href ( array ( 'action' => 'view_record', 'wazenie' => $daty[$i][0])) .">". $daty[$i][0] ."</a>",
                              ($days ),
                         custom::change_spearator($avg_grow,'.',',')." kg",
-                        custom::change_spearator($perDay,'.',',')." kg"
+                        custom::change_spearator($avgs,'.',',')." kg"
 
                         );
                 }
@@ -1233,8 +1282,9 @@ class tuczkontraktowy extends Module {
 
         $fvs  = new RBO_RecordsetAccessor("kontrakty_faktury");
         $fvs_list = $fvs->get_records(array('id'=>$ids_list),array(),array("Typ faktury"=> "DESC"));
-
+        $sumPrice = 0;
         foreach ($fvs_list as $id) {
+            $sumPrice += $price[$id->id];
             $gb->add_row(
                 '',
                 number_format($price[$id->id],2,',',' ' ). " zł",
@@ -1244,6 +1294,16 @@ class tuczkontraktowy extends Module {
             );
 
         }
+        $bold = "<span style='font-size:14px;font-weight:bold;'> ";
+        $boldEnd = "</span>";
+        $sumPrice = number_format($sumPrice,2,","," ");
+        $gb->add_row(
+            '',
+            "$bold $sumPrice zł $boldEnd",
+            '',
+            '',
+           ''
+        );
         /*
         $tabbed_browser = & $this->init_module('Utils/TabbedBrowser');
         $tabbed_browser->start_tab( 'Zakup' );
@@ -1261,6 +1321,23 @@ class tuczkontraktowy extends Module {
         $this->display_module( $gb );
 
     }
+
+    function colorStartTag($value){
+        if($value < 0){
+            return "<span style='color:red;'>";
+        }else{
+            return "";
+        }
+    }
+
+    function colorEndTag($value){
+        if($value < 0){
+            return "</span>";
+        }else{
+            return "";
+        }
+    }
+
     function time2string($time) {
         $d = floor($time/86400);
         $_d = ($d < 10 ? '0' : '').$d;
@@ -1268,17 +1345,7 @@ class tuczkontraktowy extends Module {
         return $time_str;
     }
 
-
-    public function raport_rolnik($record){
-        $help = "<ul style='text-align:left;'>";
-        $help .= "<li> W tym miejscu mamy wygenerowany raport dla rolinka. Należy pamiętać ze nie będzie on dobrze wyliczony 
-        jeżeli będzie brakowało danych</li></ul>";
-        print($help);
-        custom::create_new_faktura();
-        custom::set_header("TUCZ - ".$record['name_number']);
-        Base_ThemeCommon::install_default_theme($this->get_type());
-
-        $theme = $this->init_module('Base/Theme');
+    public function raportRolnikData($record){
         $zalozenia = Utils_RecordBrowserCommon::get_records("kontrakty_zalozenia", array("id_tuczu" => $record['id']),array(),array());
         foreach ($zalozenia as $zalozenie){$zalozenia = $zalozenie;break;}
         $dostawy = Utils_RecordBrowserCommon::get_records("kontrakty_faktury_dostawa_warchlaka" , array("id_tuczu" => $record['id']),array(),array());
@@ -1297,6 +1364,7 @@ class tuczkontraktowy extends Module {
         $details['bazowaCena'] = substr($zalozenia['farmer'],0,-3);
         $details['weterynariaCena'] = substr($zalozenia['med'],0,-3);
         $details['iloscPadlych'] = 0;
+        $details['zakladanaIlosc'] = $zalozenia['planned_amount'];
         foreach ($upadki as $upadek){
             $details['iloscPadlych'] += $upadek['amount_fall'];
 
@@ -1360,23 +1428,30 @@ class tuczkontraktowy extends Module {
         $details['srZuzyciePaszy'] = $details['sumaPaszy'] /  ( $details['wagaZywaTucznikow'] - $details['wagaWarchlakow']);
         $details['srZuzyciePaszy'] = round( $details['srZuzyciePaszy'],2);
         $srZuzycie =  $details['srZuzyciePaszy'];
-        $details['srZuzyciePaszy'] = custom::change_spearator($details['srZuzyciePaszy'],".",",");
+
 
         $details['srWagaTucznika'] =  $details['wagaZywaTucznikow'] / $details['sumaTucznikow'];
         $details['srWagaTucznika'] =   round( $details['srWagaTucznika'],2);
-        $details['srWagaTucznika'] =  custom::change_spearator($details['srWagaTucznika'],".",",");
 
         $details['srWagaWarchlaka'] =  $details['wagaWarchlakow'] / $details['sumaWarchlakow'];
         $details['srWagaWarchlaka'] =   round( $details['srWagaWarchlaka'],2);
-        $details['srWagaWarchlaka'] =  custom::change_spearator($details['srWagaWarchlaka'],".",",");
+
+        $details['srPrzyrostDobowy'] = ($details['srWagaTucznika'] - $details['srWagaWarchlaka']) / $details['czasTuczu'];
+        $details['srPrzyrostDobowy'] = round($details['srPrzyrostDobowy'],2);
 
         $details['pelnowartosciowe'] = $details['sumaTucznikow'] - $details['konfiskaty'];
-        $details['upadki'] = ($details['iloscPadlych'] + $details['konfiskaty']) / $details['sumaWarchlakow'];
-        $details['upadki'] = round( $details['upadki'] ,2);
-        $details['upadkiWartosc'] = $details['upadki'] * $details['pelnowartosciowe'];
-        $details['upadkiWartosc'] = round( $details['upadkiWartosc'] ,2);
-        $details['suma'] += $details['upadkiWartosc'];
-        $details['upadkiWartosc'] = number_format($details['upadkiWartosc'], 2,',',' ');
+        $details['upadki'] = ($details['iloscPadlych'] + $details['konfiskaty']) / $details['pelnowartosciowe'];
+        $details['upadki'] = $details['upadki'] * 100;
+        $details['upadki'] = round($details['upadki'],2);
+        $a = $details['upadki'] ;
+        $b = floor($a);
+        $c = $a-$b;
+        if($c<=0.09){
+            $a = floor($a);
+        }else{
+            $a = round($a,1);
+        }
+        $details['upadki'] = $a;
 
         $details['bazowaWartosc'] = custom::change_spearator($details['bazowaCena'],",",".") * $details['pelnowartosciowe']  ;
         $details['weterynariaWartosc'] = custom::change_spearator($details['weterynariaCena'],",",".") * $details['pelnowartosciowe']  ;
@@ -1384,7 +1459,23 @@ class tuczkontraktowy extends Module {
         $details['bazowaWartosc'] = number_format($details['bazowaWartosc'], 2,',',' ');
         $details['suma'] += $details['weterynariaWartosc'];
         $details['weterynariaWartosc'] = number_format($details['weterynariaWartosc'], 2,',',' ');
-        $details['upadki']  = custom::change_spearator( $details['upadki'] ,".",",");
+        
+        if($details['upadki'] > 3){
+            $val = 3 - $details['upadki'];
+            $val = $val * (-1);
+            $val = $val / 0.5;
+            $val = ceil($val);
+            $details['upadkiWartosc'] = ($val * -4) * $details['pelnowartosciowe'];
+        }else if($details['upadki'] < 3){
+            $val = 3 - $details['upadki'];
+            $val = $val / 0.5;
+            $val = floor($val);
+            $details['upadkiWartosc'] = ($val * 1) * $details['pelnowartosciowe'];
+        }else{
+            $details['upadkiWartosc'] = 0;
+        }
+        $details['suma'] += $details['upadkiWartosc'];
+        $details['upadkiWartosc'] = number_format($details['upadkiWartosc'], 2,',',' ');
 
         $details['premiowane'] = $optymalne;
         $details['suboptimal'] = $kary; 
@@ -1398,10 +1489,12 @@ class tuczkontraktowy extends Module {
         $details['suma'] += $details['suboptimalWartosc'];
         $details['suma'] += $details['badweightWartosc'];
 
+        $details['karaWagi'] = 0;
+
         $details['premiowaneWartosc'] = number_format($details['premiowaneWartosc'], 2,',',' ');
         $details['suboptimalWartosc'] = number_format($details['suboptimalWartosc'], 2,',',' ');
         $details['badweightWartosc'] = number_format($details['badweightWartosc'], 2,',',' ');
-        
+        $details['przyrost'] = $details['wagaZywaTucznikow'] - $details['wagaWarchlakow'];
 
         if($zalozenia['deliverer'] == $record['farmer'] || $zalozenia['deliverer'] == $rolnik['parent_company'] ){
             $waga = $details['wagaZywaTucznikow'] ;
@@ -1423,8 +1516,7 @@ class tuczkontraktowy extends Module {
             else if($waga >= 110.1 && $waga <= 115){
                 $wspolczynnik = 2.70;
             }
-            $details['nfPrice'] = (custom::change_spearator($details['wagaZywaTucznikow'],",",".") - custom::change_spearator($details['wagaWarchlakow'],",",".") 
-            * $wspolczynnik) * custom::change_spearator($cenaPaszy,",",".");
+            $details['nfPrice'] = (custom::change_spearator($details['przyrost'],",",".")* $wspolczynnik) * custom::change_spearator($cenaPaszy,",",".");
             $details['nfPrice'] = round($details['nfPrice'],2);
             $details['suma'] += $details['nfPrice'];
             $details['nfPrice'] = number_format($details['nfPrice'], 2,',',' ');
@@ -1472,11 +1564,120 @@ class tuczkontraktowy extends Module {
             }
             $details['nfPrice'] = $details['pelnowartosciowe'] * $premia;
         }
+        $details['upadki']  = custom::change_spearator($details['upadki'],".",",");
+        $details['srZuzyciePaszy'] = custom::change_spearator($details['srZuzyciePaszy'],".",",");
+        $details['srWagaTucznika'] =  custom::change_spearator($details['srWagaTucznika'],".",",");
+        $details['srPrzyrostDobowy'] = custom::change_spearator(  $details['srPrzyrostDobowy'] , ".",",");
+        $details['srWagaWarchlaka'] =  custom::change_spearator($details['srWagaWarchlaka'],".",",");
+        $details['weterynariaCena'] = custom::change_spearator($details['weterynariaCena'],".",",") ;
         $details['sumaperone'] = $details['suma'] / $details['pelnowartosciowe'];
-        $details['sumaperone'] = number_format($details['sumaperone'], 2,',',' '). " zł/szt";
-        $details['suma'] = number_format($details['suma'], 2,',',' '). " zł";
-        $theme->assign("details", $details);
+        $details['sumaperone'] = number_format($details['sumaperone'], 2,',',' ');
+        $details['suma'] = number_format($details['suma'], 2,',',' ');
+        return $details;
+    }
+
+
+    public function raport_rolnik($record){
+        $help = "<ul style='text-align:left;'>";
+        $help .= "<li> W tym miejscu mamy wygenerowany raport dla rolinka. Należy pamiętać ze nie będzie on dobrze wyliczony 
+        jeżeli będzie brakowało danych</li></ul>";
+        print($help);
+        custom::create_new_faktura();
+        custom::set_header("TUCZ - ".$record['name_number']);
+        Base_ThemeCommon::install_default_theme($this->get_type());
+
+        $theme = $this->init_module('Base/Theme');
+        
+        $theme->assign("details", $this->raportRolnikData($record));
         $theme->display('raport_rolnik');
+    }
+
+    public function raportSzefowaData($record){
+
+        $zalozenia = Utils_RecordBrowserCommon::get_records("kontrakty_zalozenia", array("id_tuczu" => $record['id']),array(),array());
+        foreach ($zalozenia as $zalozenie){$zalozenia = $zalozenie;break;}
+        $dostawy = Utils_RecordBrowserCommon::get_records("kontrakty_faktury_dostawa_warchlaka" , array("id_tuczu" => $record['id']),array(),array());
+        $odbiory = Utils_RecordBrowserCommon::get_records("kontrakty_faktury_odbior_tucznika", array("id_tuczu" => $record['id']),array(),array());
+        $pasze = Utils_RecordBrowserCommon::get_records("kontrakty_faktury_dostawa_paszy", array("id_tuczu" => $record['id']),array(),array());
+        $transports = Utils_RecordBrowserCommon::get_records("kontrakty_faktury_transporty", array("id_tuczu" => $record['id']),array(),array());
+        $upadki = Utils_RecordBrowserCommon::get_records("kontrakty_upadki", array("id_tuczu" => $record['id']),array(),array());
+        $inne = Utils_RecordBrowserCommon::get_records("kontrakty_inne", array("id_tuczu" => $record['id']),array(),array());
+
+        $details = array();
+        $details['kosztyWarchlaka'] = 0;
+        $details['cenaZaWarchlaka'] = 0;
+        $details['przewozWarchlaka'] = 0;
+        $details['feedPrice'] = 0;
+        $details['avgPriceFeed'] = 0;
+        $details['pigSell'] = 0;
+        $details['avgPriceWBC'] = 0;
+        $details['transportPig'] = 0;
+        $details['transportPerPig'] = 0;
+        $details['other'] = 0;
+        $details['farmer'] = 0;
+        $details['transportedTucznik'] = 0;
+        $details['transportedTucznikPrice'] = 0;
+        $details['kosztyInne'];
+        foreach($dostawy as $dostawa){
+            $details['sumaWarchlakow'] += $dostawa['amount'];
+            $fvs = Utils_RecordBrowserCommon::get_records("kontrakty_faktury_pozycje" , array("id" => $dostawa['fakt_poz']),array(),array());
+            foreach($fvs as $fv){
+                $details['kosztyWarchlaka'] += substr($fv['price'],0,-3);
+            }
+        }
+        foreach($transports as $transport){
+            $details['transportedPrice'] += custom::change_spearator($transport['netto'],",",".");
+        }
+        foreach($odbiory as $odbior){
+            $fvs = Utils_RecordBrowserCommon::get_records("kontrakty_faktury_pozycje" , array("id" => $odbior['fakt_poz']),array(),array());
+            foreach($fvs as $fv){
+                    $details['tucznikPrice'] += substr($fv['price'],0,-3);
+                    $details['tucznikWBC'] += custom::change_spearator($fv['amount'],",",".");
+            }
+            $details['tucznikAmount'] += $odbior['amount'];
+            $details['konfiskaty'] += $odbior['konfiskaty'];
+        }
+        foreach ($upadki as $upadek){
+            $details['iloscPadlych'] += $upadek['amount_fall'];
+        }
+        foreach ($pasze as $pasza){
+            $fvs = Utils_RecordBrowserCommon::get_records("kontrakty_faktury_pozycje" , array("id" => $pasza['fakt_poz']),array(),array());
+            foreach($fvs as $fv){
+                    $details['paszaPrice'] += substr($fv['price'],0,-3);
+            }
+        }
+
+        foreach($inne as $inny){
+            $fvs = Utils_RecordBrowserCommon::get_records("kontrakty_faktury_pozycje" , array("id" => $inny['fakt_poz']),array(),array());
+            foreach($fvs as $fv){
+                    $details['kosztyInne'] +=  $fv['amount'] * substr($fv['price'],0,-3);
+            }
+        }
+        $details['pelnowartosciowe'] = $details['tucznikAmount'] - $details['konfiskaty'] - $details['iloscPadlych'];
+        $details['zyskRolnik'] = 0;
+        $rolnikRaport = $this->raportRolnikData($record);
+        $details['zyskRolnik'] = $rolnikRaport['suma'];
+        $details['zyskRolnik'] = custom::change_spearator( $details['zyskRolnik'],",",".");
+        $details['zyskRolnik'] = custom::change_spearator( $details['zyskRolnik']," ","");
+        $details['suma'] = ($details['kosztyWarchlaka'] * (-1)) - $details['kosztyInne'];
+        $details['suma']   -= $details['transportedPrice'];
+        $details['suma']  -= $details['zyskRolnik'];
+        $details['suma']  += $details['tucznikPrice'];
+        $details['suma']  -= $details['paszaPrice'];
+        $details['perOne'] = $details['suma'] / $details['pelnowartosciowe'];
+        $details['cenaZaWarchlaka'] = $details['kosztyWarchlaka'] / $details['sumaWarchlakow'];
+        $details['tucznikWBC'] =  $details['tucznikPrice'] /  $details['tucznikWBC'] ;
+        $details['tucznikWBC'] =  number_format($details['tucznikWBC'], 2,',',' ');
+        $details['tucznikPrice'] = number_format($details['tucznikPrice'], 2,',',' ');
+        $details['kosztyInne']  = number_format($details['kosztyInne'], 2,',',' ');
+        $details['zyskRolnik']  = number_format($details['zyskRolnik'], 2,',',' ');
+        $details['perOne'] =  number_format($details['perOne'], 2,',',' ');
+        $details['suma'] =  number_format($details['suma'], 2,',',' ');
+        $details['paszaPrice'] =  number_format($details['paszaPrice'], 2,',',' ');
+        $details['transportedPrice'] =  number_format($details['transportedPrice'], 2,',',' ');
+        $details['cenaZaWarchlaka'] =  number_format($details['cenaZaWarchlaka'], 2,',',' ');
+        $details['kosztyWarchlaka'] =  number_format($details['kosztyWarchlaka'], 2,',',' ');
+        return $details;
     }
 
     public function raport_szefowa($record){
@@ -1488,11 +1689,9 @@ class tuczkontraktowy extends Module {
         custom::create_new_faktura();
        // Base_ThemeCommon::install_default_theme($this->get_type());
         $theme = $this->init_module('Base/Theme');
-        $raport = new Raporty($record);
-        $details = $raport->get_results();
-        $extra = $raport->get_extra_for_boss();
-        $theme->assign("extra", $extra);
-        $theme->assign("details", $details);
+
+
+        $theme->assign("details", $this->raportSzefowaData($record));
         $theme->display('raport_szefowa');
     }
     public function deleteTucz($id){
@@ -1505,17 +1704,14 @@ class tuczkontraktowy extends Module {
         $deleteImg = "<img src='data/Base_Theme/templates/default/Utils/GenericBrowser/delete.png' />";
         $infoImg =   "<img src='data/Base_Theme/templates/default/Utils/GenericBrowser/info.png' />";
 
-
         $view =  $record->record_link($viewImg, false, $action = 'view'  );
         $edit =  $record->record_link($editImg , false,  $action = 'edit');
         $delete =  "<a " . $this->create_confirm_callback_href("Na pewno usunąć ten tucz?",
         array($this, "deleteTucz"), array($record->id)) . ">" . $deleteImg . "</a>";
         $info = $record->get_html_record_info();
 
-         return $view." ".$edit." ".$delete." ";   
-
+        return $view." ".$edit." ".$delete." ";   
     }
-
 
     public function body(){
 
@@ -1526,7 +1722,7 @@ class tuczkontraktowy extends Module {
 
     }
     public function setStatus($val){
-        if($val == ""){
+        if($val == "" || strlen($val) == 0){
             return "checked";
         }
         else{
@@ -1535,37 +1731,92 @@ class tuczkontraktowy extends Module {
     }
     public function main(){
         $fcallback = array('tuczkontraktowyCommon','fv_format');
+        Base_ActionBarCommon::add(
+            'add',
+            'Dodaj nową fakture', 
+            Utils_RecordBrowserCommon::create_new_record_href('kontrakty_faktury',$def=array(),$id='none'),
+                null,
+                5
+        );
+        Base_ActionBarCommon::add(
+            'add',
+            'Dodaj nowy tucz', 
+            Utils_RecordBrowserCommon::create_new_record_href('kontrakty',$def=array(),$id='none'),
+                null,
+                4
+        );
+        //pobierz ze wspolnych danych dane
+        $statuses = Utils_CommonDataCommon::get_array("Kontrakty/status");
+        $crits = null;
+        $contractsRbo = new RBO_RecordsetAccessor('kontrakty');
+        $customStatus = null;
+        if($this->get_module_variable("customStatus")){
+            $customStatus = $this->get_module_variable("customStatus");
+        }else{
+            $customStatus = array();
+            foreach($statuses as $key => $val){
+                $count = $contractsRbo->get_records_count(array("status"=>array($key)),array(),array());
+                if($key == "Planned" || $key == "InProgress" || $key == "Accepted"){
+                    $customStatus[$key]["checked"] = "checked";
+                }else{
+                    $customStatus[$key]["checked"] = "";
+                }
+                if($count > 0){
+                    $customStatus[$key]["disabled"] = "";
+                }else{
+                    $customStatus[$key]["disabled"] = "disabled";
+                }
+            }
+
+            $this->set_module_variable("customStatus",$customStatus);
+            $customStatus = $this->get_module_variable("customStatus");
+        }
+        foreach($statuses as $key => $val){
+            if($_REQUEST["filterStatus"] == $key){
+                $customStatus[$key]['checked'] = $this->setStatus( $customStatus[$key]['checked']);
+            }
+        }
+        foreach($statuses as $key => $val){
+            $count = $contractsRbo->get_records_count(array("status"=>array($key)),array(),array());
+            if($count > 0){
+                $customStatus[$key]["disabled"] = "";
+
+            }else{
+                $customStatus[$key]['disabled'] = "disabled";
+                $customStatus[$key]["checked"] = "";
+            }
+            $this->set_module_variable("customStatus",$customStatus);
+        }
+        if($this->get_module_variable("customStatus")){
+            $crits = null;
+            $crits["status"] = array();
+            foreach($statuses as $key => $val){
+                if($customStatus[$key]["checked"] == "checked"){ 
+                        $crits["status"][] = $key;
+                }
+            }
+        }
+        $lista = null;
+        $crits2 = null;
         $form = $this->init_module('Libs/QuickForm'); 
         $form->addElement('autoselect', 'faktura', __('Szukaj tuczy przez nr faktury'), array(),
-            array(array('tuczkontraktowyCommon','autoselect_fv'), array($crits, $fcallback)), $fcallback);
+            array(array('tuczkontraktowyCommon','autoselect_fv'), array($crits2, $fcallback)), $fcallback);
         $form->addElement("submit","submit","Szukaj");
         print('<table class="letters-search nonselectable" border="0" cellpadding="0" cellspacing="0">');
             print("<tbody><tr><td style='margin-right:25px; float:right;'>");
                 $form->display();
         if($form->validate()){
-            print("</td></tr></tbody>");
-            print("</table>");
             $values = $form->exportValues();
-            Base_ThemeCommon::install_default_theme($this->get_type());
-            custom::create_new_faktura();
-            Epesi::js('jq(".name").html("");
-            jq(".name").html("<div> Tucze kontraktowe </div>");');
-            $gb = $this->init_module('Utils/GenericBrowser', null,"FVS");
-            $gb->set_table_columns(
-                array(
-                    array('name'=>'', 'width'=>5),				
-                    array('name'=>'Data wstawienia', 'width'=>12),
-                    array('name'=>'Rolnik', 'width'=>12),
-                    array('name'=>'Notatka', 'width'=>12),
-                    array('name'=>'Kolczyk', 'width'=>12),
-                    array('name'=>'Nazwa/Numer', 'width'=>12),
-                    array('name'=>'Status', 'width'=>12),
-                )
-            );
             $contracts = new RBO_RecordsetAccessor('kontrakty');
-            $faktury = new RBO_RecordsetAccessor('kontrakty_faktury_pozycje');
+            $fakturyPozRbo = new RBO_RecordsetAccessor('kontrakty_faktury_pozycje');
+            $fakturyRbo = new RBO_RecordsetAccessor('kontrakty_faktury');
+            $faktura = $fakturyRbo->get_records(array("fv_numer" => $values['faktura']),array(),array());
+            $fvsIds = array();
+            foreach($faktura as $f){
+                $fvsIds[] = $f['id'];
+            }
             if($values['faktura'] != ""){
-                $recordsFaktury = $faktury->get_records(array("faktura"=>$values['faktura']),array(),array());
+                $recordsFaktury = $fakturyPozRbo->get_records(array("faktura"=>$fvsIds),array(),array());
                 $tucze = array();
                 foreach($recordsFaktury as $r){
                     $tucz = new RBO_RecordsetAccessor(custom::table_names($r['typ_faktury']));
@@ -1578,170 +1829,241 @@ class tuczkontraktowy extends Module {
             }else{
                 $lista = $contracts->get_records(array(),array(),array());
             }
-            $view_btn = "<img border='0' src='data/Base_Theme/templates/default/Utils/GenericBrowser/view.png' alt='Podgląd' />";
-            $edit_btn = "<img border='0' src='data/Base_Theme/templates/default/Utils/Calendar/edit.png' alt='Edytuj' />";
-            foreach($lista as $l){
-                $gb->add_row(
-                    $l->record_link($view_btn,$nolink = false,$action = 'view')." ".$l->record_link($edit_btn,$nolink = false,$action = 'edit'),
-                    $l['data_start'],
-                    $l->get_val("farmer"),
-                    $l['note'],
-                    $l['kolczyk'],
-                    $l['name_number'],
-                    $l->get_val("status")
-                );
-            }
-            $this->display_module($gb);
-            Base_ActionBarCommon::add(
-                'add',
-                'Dodaj nową fakture', 
-                Utils_RecordBrowserCommon::create_new_record_href('kontrakty_faktury',$def=array(),$id='none'),
-                    null,
-                    5
-            );
         }
-        else{
-            Base_ActionBarCommon::add(
-                'add',
-                'Dodaj nową fakture', 
-                Utils_RecordBrowserCommon::create_new_record_href('kontrakty_faktury',$def=array(),$id='none'),
-                    null,
-                    5
-            );
-            Base_ThemeCommon::install_default_theme($this->get_type());
-            custom::create_new_faktura();
-           Epesi::js('jq(".name").html("");
+        Base_ThemeCommon::install_default_theme($this->get_type());
+        custom::create_new_faktura();
+        Epesi::js('jq(".name").html("");
                  jq(".name").html("<div> Tucze kontraktowe </div>");');
-            $checked = null;
-            $crits = array('status'=> array('Planned','InProgress','Accepted'));
-             if($this->get_module_variable("customStatus")){
-                $checked = $this->get_module_variable("customStatus");
-            }else{
-                $this->set_module_variable("customStatus",array("checked","checked","checked","",""));
-                $checked = $this->get_module_variable("customStatus");
-            }
-            if($_REQUEST['filterStatus'] == "Planned"){
-                $checked[0] = $this->setStatus( $checked[0]);
-                $this->set_module_variable("customStatus",$checked);
-            }
-            else if($_REQUEST['filterStatus'] == "Accepted"){
-                $checked[1] = $this->setStatus( $checked[1]);
-                $this->set_module_variable("customStatus",$checked);
-            }
-            else if($_REQUEST['filterStatus'] == "InProgress"){
-                $checked[2] = $this->setStatus( $checked[2]);
-                $this->set_module_variable("customStatus",$checked);
-            }
-            else if($_REQUEST['filterStatus'] == "Ended"){
-                $checked[3] = $this->setStatus( $checked[3]);
-                $this->set_module_variable("customStatus",$checked);
-            }
-            else if($_REQUEST['filterStatus'] == "Done"){
-                $checked[4] = $this->setStatus( $checked[4]);
-                $this->set_module_variable("customStatus",$checked);
-            }
-            if($_REQUEST['filterStatus'] || $this->get_module_variable("customStatus") ){
-                $crits['status'] = array();
-                if($checked[0] == "checked"){ $crits['status'][] = "Planned"; }
-                if($checked[1] == "checked"){ $crits['status'][] = "Accepted"; }
-                if($checked[2] == "checked"){ $crits['status'][] = "InProgress"; }
-                if($checked[3] == "checked"){ $crits['status'][] = "Ended"; }
-                if($checked[4] == "checked"){ $crits['status'][] = "Done"; }
-            }
-            
-            $hrefPlan = $this->create_href(array("filterStatus"=>"Planned"));
-            $hrefAccept = $this->create_href(array("filterStatus"=>"Accepted"));
-            $hrefInProg = $this->create_href(array("filterStatus"=>"InProgress"));
-            $hrefEnd = $this->create_href(array("filterStatus"=>"Ended"));
-            $hrefRozl = $this->create_href(array("filterStatus"=>"Done"));
+        $gb =  $this->init_module('Utils/GenericBrowser',null, 'kontrakty');
+        $gb->set_table_columns(
+            array(
+                array('name'=>'','width' => 5),				
+                array('name'=>'Data wstawienia','search'=>1,'sort'=>1),
+                array('name'=>'Rolnik','search'=>1),
+                array('name'=>'Notatka','search'=>1),
+                array('name'=>'Kolczyk','search'=>1),
+                array('name'=>'Nazwa/Numer','search'=>1),
+                array('name'=>'Status','search'=>1),
 
+            )
+        );
 
-            print("</td></td><td style='margin-right:25px; float:right;'>");
-            print("<input type=\"checkbox\" ".$checked[0]."  $hrefPlan />Planowany");
-            print("<input type=\"checkbox\" ".$checked[1]." $hrefAccept '/>Zatwierdzony");
-            print("<input type=\"checkbox\" ".$checked[2]." $hrefInProg  '/>W trakcie");
-            print("<input type=\"checkbox\" ".$checked[3]." $hrefEnd '/>Zakończony");
-            print("<input type=\"checkbox\" ".$checked[4]." $hrefRozl />Rozliczony");
-            print("</td></tr></tbody>");
-            print("</table>");
-
-
-            $gb =  $this->init_module('Utils/GenericBrowser',null, 'kontrakty');
-            $gb->set_table_columns(
-                array(
-                    array('name'=>'','width' => 5),				
-                    array('name'=>'Data wstawienia','search'=>1,'sort'=>1),
-                    array('name'=>'Rolnik','search'=>1),
-                    array('name'=>'Notatka','search'=>1),
-                    array('name'=>'Kolczyk','search'=>1),
-                    array('name'=>'Nazwa/Numer','search'=>1),
-                    array('name'=>'Status','search'=>1),
-
-                )
-            );
-            $view_btn = "<img border='0' src='data/Base_Theme/templates/default/Utils/GenericBrowser/view.png' alt='Podgląd' />";
-            $edit_btn = "<img border='0' src='data/Base_Theme/templates/default/Utils/Calendar/edit.png' alt='Edytuj' />";
-            $contractsRbo = new RBO_RecordsetAccessor('kontrakty');
-            $contracts = $contractsRbo->get_records($crits,array(),array("data_start"=>"DESC"));
-            foreach($contracts as $l){
-                $gb->add_row(
-                    $l->record_link($view_btn,$nolink = false,$action = 'view')." ".$l->record_link($edit_btn,$nolink = false,$action = 'edit'),
-                    $l['data_start'],
-                    $l->get_val("farmer"),
-                    $l['note'],
-                    $l['kolczyk'],
-                    $l['name_number'],
-                    $l->get_val("status")
-                );
-            }
-            $this->display_module($gb,array(true),'automatic_display');
+        print("</td><td style='margin-right:25px; float:right;'>");
+        foreach($statuses as $key => $val){
+            $href = $this->create_href(array("filterStatus"=>$key));
+            print("<input type=\"checkbox\"  ".$customStatus[$key]['disabled']." ".$customStatus[$key]['checked']."  $href /> $val");
         }
+        print("</td></tr><tr><td style='float:right;'> Status wyłączony jest jednoznaczny z tym że nie ma żadnego tuczu o tym statusie </td></tr></tbody>");
+        print("</table>"); 
+        $view_btn = "<img border='0' src='data/Base_Theme/templates/default/Utils/GenericBrowser/view.png' alt='Podgląd' />";
+        $edit_btn = "<img border='0' src='data/Base_Theme/templates/default/Utils/Calendar/edit.png' alt='Edytuj' />";
+        $contractsRbo = new RBO_RecordsetAccessor('kontrakty');
+        if($lista == null){
+            $contracts = $contractsRbo->get_records($crits,array(),array("data_start"=>"DESC"));
+        }else{
+            $contracts = $lista;
+        }
+        foreach($contracts as $l){
+            $gb->add_row(
+                $l->record_link($view_btn,$nolink = false,$action = 'view')." ".$l->record_link($edit_btn,$nolink = false,$action = 'edit'),
+                $l['data_start'],
+                $l->get_val("farmer"),
+                $l['note'],
+                $l['kolczyk'],
+                $l['name_number'],
+                $l->get_val("status")
+            );
+        }
+        $this->display_module($gb,array(true),'automatic_display');
     }
     public function settings(){}    
     public function reports(){
-        $currentNumWeek = (date("W"));
-        $weeks = [];
-        $contractsArrayIds = array();
-        $weeksSums = array();
-        $tucze = array();
-        for($i = ($currentNumWeek - 4); $i<=$currentNumWeek +2; $i++){
-            $weeksSums[$i] = 0;
-            if($i == $currentNumWeek){
-                $weeks[$i] = array("week" => $i, "current" => true);
-            }else{
-                $weeks[$i] = array("week" => $i);
-            }
+        $hrefMonthView = "";
+        $hrefTypeView = "";
+        if(!$this->get_module_variable("viewType" )){
+            $this->set_module_variable("timeType" , "Weeks");
+            $this->set_module_variable("viewType" , "warchlak");
         }
-        foreach($weeks as $key => $value){
-            $w = $key;
-            $year = date("Y");
-            $dateStart = date("Y-m-d" , strtotime($year."W".$w));
-            $dateEnd =  date("Y-m-d", strtotime($dateStart." +6days"));
-            $contractsRbo = new RBO_RecordsetAccessor('kontrakty');
-            $contracts = $contractsRbo->get_records(array(">=data_start" => $dateStart, "<=data_start" => $dateEnd),array(),array());
-            foreach($contracts as $contract){
-                $reciveRbo = new RBO_RecordsetAccessor('kontrakty_faktury_dostawa_warchlaka');
-                $recived  = $reciveRbo->get_records(array("id_tuczu" => $contract['id']),array(),array());
-                $contractsArrayIds[$contract['id']]['farmer']['name'] = $contract->record_link($contract->get_val("farmer",$nolink=true),false);
-                $contractsArrayIds[$contract['id']]['farmer']['time'] = floor((strtotime(date("Y-m-d")) - strtotime($contract['data_start'])) / (24*60*60));
-                foreach($recived as $recive){
-                    $contractsArrayIds[$contract['id']][$key] += $recive['amount'];
-                    $weeksSums[$w] +=  $recive['amount'];
-                }
-            }
+        if(!$this->get_module_variable("currentNumWeek")){  
+            $this->set_module_variable("currentNumWeek",date("W"));
         }
-        foreach($weeksSums as $key => $value){
-            $weeksSums[$key] =  number_format($value, 0, ',', ' ');
+        if(!$this->get_module_variable("currentNumMonth")){
+            $this->set_module_variable("currentNumMonth",date("n"));
         }
+        if($_REQUEST['timeType']){
+            $timeType = $_REQUEST['timeType'];
+            $this->set_module_variable("timeType" , $timeType);
+        }
+        if($_REQUEST['viewType']){
+            $viewType = $_REQUEST['viewType'];
+            $this->set_module_variable("viewType" , $viewType);
+        }
+        if($_REQUEST['prevWeek']){
+            $this->set_module_variable("currentNumWeek" , $this->get_module_variable("currentNumWeek") -1);
+        }
+        if($_REQUEST['prevMonth']){
+            $this->set_module_variable("currentNumMonth" , $this->get_module_variable("currentNumMonth") -1);
+        }
+        if($_REQUEST['nextWeek']){
+            $this->set_module_variable("currentNumWeek" , $this->get_module_variable("currentNumWeek") + 1);
+        }
+        if($_REQUEST['nextMonth']){
+            $this->set_module_variable("currentNumMonth" , $this->get_module_variable("currentNumMonth") + 1);
+        }
+        if($_REQUEST['currentWeek']){
+            $this->set_module_variable("currentNumWeek" , date("W"));
+        }
+        if($_REQUEST['currentMonth']){
+            $this->set_module_variable("currentNumMonth" , date("n") );
+        }
+
+        if( $this->get_module_variable("viewType") == 'tucznik'){
+            $typeName = "Odbiory";
+            $dosOdeb = "Odebrane ";
+            $table = "kontrakty_faktury_odbior_tucznika";
+            $typeNameChange = "Dostawy";
+            $hrefTypeView = $this->create_href(array("viewType"=>"warchlak"));
+        }else{
+            $typeName = "Dostawy";
+            $dosOdeb = "Dostarczone ";
+            $table = "kontrakty_faktury_dostawa_warchlaka";
+            $typeNameChange = "Odbiory";
+            $hrefTypeView = $this->create_href(array("viewType"=>"tucznik"));
+        }
+        if( $this->get_module_variable("timeType") == 'Month'){
+            $hrefMonthView = $this->create_href(array("timeType"=>"Weeks"));
+        }else{
+            $hrefMonthView = $this->create_href(array("timeType"=>"Month"));
+
+        }
+
         Base_ThemeCommon::install_default_theme($this->get_type());
         $theme = $this->init_module('Base/Theme');
-        $theme->assign("sums", $weeksSums);
-        print_r($contractsArrayIds);
-        $theme->assign("contracts", $contractsArrayIds);
-        $theme->assign("weeks", $weeks);
-        $theme->display("raport");
 
+        $reciveRbo = new RBO_RecordsetAccessor($table);
+        $zalozeniaRbo = new RBO_RecordsetAccessor('kontrakty_zalozenia');
+        $type = "report".$this->get_module_variable("timeType");
+        if($this->get_module_variable("timeType") == "Weeks"){
+            $currentNumWeek = $this->get_module_variable("currentNumWeek");
+            $weeks = [];
+            $contractsArrayIds = array();
+            $weeksSums = array();
+            $tucze = array();
+            for($i = ($currentNumWeek - 10); $i<=$currentNumWeek +2; $i++){
+                $weeksSums[$i]['sum'] = 0;
+                $weeksSums[$i]['zal'] = 0;
+                if($i == $currentNumWeek){
+                    $weeks[$i] = array("week" => $i, "current" => true);
+                }else{
+                    $weeks[$i] = array("week" => $i);
+                }
+            }
+            foreach($weeks as $key => $value){
+                $w = $key;
+                $year = date("Y");
+                $dateStart = date("Y-m-d" , strtotime($year."W".$w));
+                $dateEnd =  date("Y-m-d", strtotime($dateStart." +6days"));
+                $contractsRbo = new RBO_RecordsetAccessor('kontrakty');
+                $contracts = $contractsRbo->get_records(array(">=data_start" => $dateStart, "<=data_start" => $dateEnd),array(),array());
+                foreach($contracts as $contract){
+                    foreach($weeks as $k => $v){
+                        $contractsArrayIds[$contract['id']]['weeks'][$k] = 0;
+                    }
+                    $zalozenia = $zalozeniaRbo->get_records(array("id_tuczu"=> $contract->id),array(),array());
+                    foreach($zalozenia as $zalozenie){
+                        $weeksSums[$w]['zal'] += $zalozenie['planned_amount'];
+                    }
+                    $recived  = $reciveRbo->get_records(array("id_tuczu" => $contract['id']),array(),array());
+                    $contractsArrayIds[$contract['id']]['farmer']['name'] = $contract->record_link($contract->get_val("farmer",$nolink=true),false);
+                    $contractsArrayIds[$contract['id']]['farmer']['time'] = floor((strtotime(date("Y-m-d")) - strtotime($contract['data_start'])) / (24*60*60));
 
+                    foreach($recived as $recive){
+                        $contractsArrayIds[$contract['id']]['weeks'][$key] += $recive['amount'];
+                        $weeksSums[$w]['sum'] +=  $recive['amount'];
+                    }
+                }
+            }
+            foreach($weeksSums as $key => $value){
+            // $weeksSums[$key] =  number_format($value, 0, ',', ' ');
+            }
+            usort($contractsArrayIds, function ($item1, $item2) {
+                if ($item1['farmer']['time'] == $item2['farmer']['time']) return 0;
+                return $item1['farmer']['time'] > $item2['farmer']['time'] ? -1 : 1;
+            });
+            $theme->assign("prevWeek", $this->create_href(array("prevWeek"=>"prevWeek")));
+            $theme->assign("currentWeek", $this->create_href(array("currentWeek"=>"currentWeek")));
+            $theme->assign("nextWeek", $this->create_href(array("nextWeek"=>"prevWeek")));
+            $theme->assign("sums", $weeksSums);
+            $theme->assign("contracts", $contractsArrayIds);
+            $theme->assign("weeks", $weeks);
+            $theme->assign("currentNumWeek", $currentNumWeek);
+            $theme->assign("hrefTypeView", $hrefTypeView);
+            $theme->assign("hrefMonthView", $hrefMonthView);
+            $theme->assign("typeName", $typeName);
+            $theme->assign("dosOdeb", $dosOdeb);
+            $theme->assign("typeNameChange", $typeNameChange);
+        }
+        else{
+            $currentNumMonth = $this->get_module_variable("currentNumMonth");
+            $months = [];
+            $contractsArrayIds = array();
+            $monthSums = array();
+            $tucze = array();
+            for($i = ($currentNumMonth - 5); $i<=$currentNumMonth + 1; $i++){
+                $monthSums[$i]['sum'] = 0;
+                $monthSums[$i]['zal'] = 0;
+                if($i == $currentNumMonth){
+                    $months[$i] = array("month" => __(date("F",strtotime("2019-$i-01")) ) , "current" => true);
+                }else{
+                    $months[$i] = array("month" =>  __(date("F",strtotime("2019-$i-01"))) );
+                }
+            }
+            foreach($months as $key => $value){
+                $w = $key;
+                $year = date("Y");
+                $dateStart = date("Y-m-01" , strtotime($year."-".$w."-01"));
+                $dateEnd =  date("Y-m-t", strtotime($year."-".$w."-01"));
+                $contractsRbo = new RBO_RecordsetAccessor('kontrakty');
+                $contracts = $contractsRbo->get_records(array(">=data_start" => $dateStart, "<=data_start" => $dateEnd),array(),array());
+                foreach($contracts as $contract){
+                    foreach($months as $k => $v){
+                        $contractsArrayIds[$contract['id']]['months'][$k] = 0;
+                    }
+                    $zalozenia = $zalozeniaRbo->get_records(array("id_tuczu"=> $contract->id),array(),array());
+                    foreach($zalozenia as $zalozenie){
+                        $monthSums[$w]['zal'] += $zalozenie['planned_amount'];
+                    }
+                    $recived  = $reciveRbo->get_records(array("id_tuczu" => $contract['id']),array(),array());
+                    $contractsArrayIds[$contract['id']]['farmer']['name'] = $contract->record_link($contract->get_val("farmer",$nolink=true),false);
+                    $contractsArrayIds[$contract['id']]['farmer']['time'] = floor((strtotime(date("Y-m-d")) - strtotime($contract['data_start'])) / (24*60*60));
+
+                    foreach($recived as $recive){
+                        $contractsArrayIds[$contract['id']]['months'][$key] += $recive['amount'];
+                        $monthSums[$w]['sum'] +=  $recive['amount'];
+                    }
+                }
+            }
+            foreach($weeksSums as $key => $value){
+                // $weeksSums[$key] =  number_format($value, 0, ',', ' ');
+            }
+            usort($contractsArrayIds, function ($item1, $item2) {
+                if ($item1['farmer']['time'] == $item2['farmer']['time']) return 0;
+                return $item1['farmer']['time'] > $item2['farmer']['time'] ? -1 : 1;
+            });
+            $theme->assign("prevMonth", $this->create_href(array("prevMonth"=>"prevMonth")));
+            $theme->assign("currentMonth", $this->create_href(array("currentMonth"=>"currentMonth")));
+            $theme->assign("nextMonth", $this->create_href(array("nextMonth"=>"nextMonth")));
+            $theme->assign("sums", $monthSums);
+            $theme->assign("contracts", $contractsArrayIds);
+            $theme->assign("months", $months);
+            $theme->assign("currentNumMonth", $currentNumMonth);
+            $theme->assign("hrefTypeView", $hrefTypeView);
+            $theme->assign("hrefMonthView", $hrefMonthView);
+            $theme->assign("typeName", $typeName);
+            $theme->assign("dosOdeb", $dosOdeb);
+            $theme->assign("typeNameChange", $typeNameChange);
+        }
+        $theme->display($type);
     }     
 }
 class custom{
@@ -1765,8 +2087,6 @@ class custom{
         return $value;
     }
 
-
-    
     public static function addButton($table,$title_text,$_def){
         Base_ActionBarCommon::add(
             'add',
@@ -1845,8 +2165,6 @@ class custom{
         return $fields;
     }
 
-
-
     public static function get_current_amount($type){
         $feeds = Utils_RecordBrowserCommon::get_records('kontrakty_faktury_dostawa_paszy',
         array('feed_type' => $type , 'id_tuczu' =>$_SESSION['tucz_id']),array(),array());
@@ -1862,7 +2180,6 @@ class custom{
         return $ammount;
     }
     /**
-     * Does something interesting
      *
      * @param String $display_text   Text to display element
      * @param Array $fields Array of elements 'name' => 'value'

@@ -69,8 +69,8 @@ $translations['weight_alive_brutto']=  'Waga żywa brutto';
 $translations['other_type']=  'Typ';
 $translations['konfiskaty']=  'Konfiskaty';
 $translations['premiowane']=  'Sztuki premiowane za wagę';
-$translations['suboptimal']=  'Sztuki nie optymalne wagowo';
-$translations['badweight']=  'Sztuki w złej wadze';
+$translations['suboptimal']=  'Sztuki nie optymalne wagowo (-5)';
+$translations['badweight']=  'Sztuki w złej wadze (-10)';
 
 
 

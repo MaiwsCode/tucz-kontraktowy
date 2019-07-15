@@ -10,7 +10,7 @@
     <tr>
         <td> {$details.farmer_name} </td>
         <td> {$details.dateStart} </td>
-        <td> {$details.sumaWarchlakow} </td>
+        <td> {$details.zakladanaIlosc} </td>
         <td> {$details.key} </td>
     </tr>
     </table>
@@ -31,6 +31,10 @@
     <tr>
         <td> Czas tuczu	</td>
         <td> {$details.czasTuczu} dni </td>
+    </tr>
+        <tr>
+        <td> Średni przyrost dobowy </td>
+        <td> {$details.srPrzyrostDobowy} kg/dzień </td>
     </tr>
     <tr>
         <td> Koszt leczenia na sztukę pełnowartościową	</td>
@@ -64,8 +68,12 @@
     <tr>
         <td> Upadki </td>
         <td> {$details.pelnowartosciowe} szt </td>
-        <td> {$details.upadki}  zł </td>
-        <td> {$details.upadkiWartosc} zł </td>
+        <td> {$details.upadki}  % </td>
+        {if $details.upadkiWartosc[0] == "-"}
+            <td> <span style='color:red;'> {$details.upadkiWartosc} zł </span> </td>
+        {else}
+            <td> {$details.upadkiWartosc} zł </td>
+        {/if}
     </tr>
     <tr>
         <td> Premia wagi optymalnej </td>
@@ -77,14 +85,32 @@
         <td> Kara wagi słabe</td>
         <td>  {$details.suboptimal}  szt </td>
         <td> -5 zł</td>
-        <td> {$details.suboptimalWartosc} zł</td>
+        {if $details.suboptimalWartosc[0] == "-"}
+            <td><span style='color:red;'> {$details.suboptimalWartosc} zł </span></td>
+        {else}
+            <td> {$details.suboptimalWartosc} zł</td>
+        {/if}
     </tr>
 
     <tr>
         <td> Kara wagi krytyczne +- </td>
         <td> {$details.badweight} szt</td>
         <td> -10 zł</td>
-        <td> {$details.badweightWartosc} zł</td>
+        {if $details.badweightWartosc[0] == "-"}
+            <td> <span style='color:red;'> {$details.badweightWartosc} zł </span></td>
+        {else}
+            <td> {$details.badweightWartosc} zł</td>
+        {/if}
+    </tr>
+    <tr>
+        <td> Kara za brak przeważeń  </td>
+        <td> {$details.pelnowartosciowe} szt</td>
+        <td> -10 zł</td>
+        {if $details.karaWagi[0] == "-"}
+            <td> <span style='color:red;'> {$details.karaWagi} zł </span></td>
+        {else}
+            <td> {$details.karaWagi} zł</td>
+        {/if}
     </tr>
 
 </table>
@@ -107,11 +133,11 @@
     <tr style='background:#F0F0F0;'> <td colspan='3'></td></tr>
     <tr>
         <th> SUMA: </th>
-        <td colspan="2"> {$details.suma}  </td>
+        <td colspan="2"> {$details.suma}  zł </td>
     </tr>
     <tr>
         <th> Za sztukę: </th>
-        <td colspan="2"> {$details.sumaperone} </td>
+        <td colspan="2"> {$details.sumaperone} zł/szt </td>
     </tr>
     </table>
 
