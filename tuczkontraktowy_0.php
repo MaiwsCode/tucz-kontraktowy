@@ -221,9 +221,12 @@ class tuczkontraktowy extends Module {
         $gb = &$this->init_module('Utils/GenericBrowser', null, 'Pasze');
         $gb->set_table_columns(
             array(
-                array('name'=>'Pasza', 'width'=>10 ),
-                array('name' => "Data", 'width' => 10),
+                array('name'=>'Pasza', 'width'=>45 ),
+                array('name' => "Data", 'width' => 45),
                 array('name'=>'Ilość', 'width'=>45),
+                array('name'=>'Waga auta pusto', 'width'=>45),
+                array('name'=>'Waga auta pełno', 'width'=>45),
+                array('name'=>'Róznica', 'width'=>45),
                 array('name'=>'Cena netto', 'width'=>45),
                 array('name'=>'Cena jednostkowa', 'width'=>45)
             )
@@ -250,6 +253,9 @@ class tuczkontraktowy extends Module {
             $customPasze[$p['id']]['amount'] = $extra['amount'];
             $customPasze[$p['id']]['price'] = number_format($price,2,","," ");;
             $customPasze[$p['id']]['date'] = $date;
+            $customPasze[$p['id']]['carEmpty'] = 0 + $p['weightcarempty'];
+            $customPasze[$p['id']]['carFull'] = 0 + $p['weightcarfull'];
+            $customPasze[$p['id']]['carDiff'] = 0 + $p['weightcarfull'] - $p['weightCarEmpty'];
             if($data != null){ 
                 $customPasze[$p['id']]['dateFormated'] = $data->get_val("date",false);
             }
@@ -260,13 +266,24 @@ class tuczkontraktowy extends Module {
             if ($item1['date'] == $item2['date']) return 0;
             return $item1['date'] > $item2['date'] ? -1 : 1;
         });
-
+        $dostarczono = 0;
         foreach($customPasze as $cp){
+            $bilans =  $cp['carDiff'] - $cp['amount'];
+            if($bilans < 0 ){
+                $bilans = "<span style='color:red;'>".$bilans."</span>";
+            }
+            if($bilans > 0 ){
+                $bilans = "<span style='color:green;'> +".$bilans."</span>";
+            }
+            $dostarczono += $cp['carDiff'];
             $gb->add_row(
                 $cp['record'],
                 $cp['dateFormated'],
                 $cp['amount']." kg",
-                $cp['price'],
+                $cp['carEmpty'] ."kg",
+                $cp['carFull'] ."kg", 
+                $cp['carDiff'] ." (".$bilans.")",
+                $cp['price'] ."zł",
                 $cp["avg"]
             );
         }
@@ -278,10 +295,13 @@ class tuczkontraktowy extends Module {
         $avg = round($avg,4);
         $sumaKg = number_format($sumaKg,2,","," ");
         $cena = number_format($cena,2,","," ");
-
+        $dostarczono  = number_format($dostarczono ,2,","," ");
         $gb->add_row(
             "","",
             "$bold Łącznie kg: ".$sumaKg." kg $boldEnd",
+            "",
+            "",
+            "$bold Dostarczono: ".$dostarczono." kg $boldEnd",
             "$bold Łączna cena: ".$cena." zł $boldEnd",
             "$bold Średnia cena za kg: ".custom::change_spearator($avg,".",",")." zł/kg $boldEnd"
         );
@@ -398,6 +418,10 @@ class tuczkontraktowy extends Module {
         foreach ($pigs as $pig){
             $pigs_amount += $pig['amount'];
         }
+        $zalozenia = Utils_RecordBrowserCommon::get_records("kontrakty_zalozenia", array("id_tuczu" => $record['id']),array(),array());
+        foreach ($zalozenia as $zalozenie){$zalozenia = $zalozenie;break;}
+
+        $pigs_amount = $zalozenia['planned_amount'];
         //updatki
         $fall_rbo = new RBO_RecordsetAccessor("kontrakty_upadki");
         $falls = $fall_rbo->get_records(array('id_tuczu' => $record['id']),array(),array());
@@ -1386,7 +1410,7 @@ class tuczkontraktowy extends Module {
         $optymalne = 0;
         $zlaWaga = 0;
         $kary = 0;
-
+        
         foreach ($odbiory as $odbior){
             $details['sumaTucznikow'] += $odbior['amount'];
             $details['konfiskaty'] += $odbior['konfiskaty'];
@@ -1400,31 +1424,30 @@ class tuczkontraktowy extends Module {
                 $zlaWaga += $odbior['badweight'];
             }
         }
-
+        $details['pelnowartosciowe'] = $details['sumaTucznikow'] - $details['konfiskaty'];
         $details['dateEnd'] = $details['dateEnd'] / count($odbiory);
         $details['dateEnd'] = round($details['dateEnd'],0);
         $details['czasTuczu'] = $this->time2string($details['dateEnd'] -  strtotime($record['data_start']));
-
+        $details['karaWagi'] = 0;
         foreach ($pasze as $pasza){
-
+            if($pasza['weightcarfull'] == 0  || $pasza['weightcarfull'] == "" || $pasza['weightcarempty'] == 0 || $pasza['weightcarempty'] == "" ){
+                $details['karaWagi'] = $details['pelnowartosciowe'] * (-10);
+            }
             $fvs = Utils_RecordBrowserCommon::get_records("kontrakty_faktury_pozycje" , array("id" => $pasza['fakt_poz']),array(),array());
             foreach($fvs as $fv){
                 $details['sumaPaszy'] += custom::change_spearator($fv['amount'],",",".");
             }
         }
-
+        $details['suma'] += $details['karaWagi'];
         $details['inne'] = 0;
         foreach ($inne as $inny){
             $fvs = Utils_RecordBrowserCommon::get_records("kontrakty_faktury_pozycje" , array("id" => $inny['fakt_poz']),array(),array());
             foreach($fvs as $fv){
-                $details['inne'] += custom::change_spearator($fv['amount'],",",".") * substr($fv['price'],0,-3) ;
+                $details['inne'] += custom::change_spearator(substr($fv['price'],0,-3),",",".");
             }
         }
-        
-        if( $details['inne'] != 0){
         $details['inne'] =  $details['inne'] / $details['pelnowartosciowe'];
-        $details['inne'] = number_format($details['inne'], 2,',',' '). " zł/szt";
-        }else{ $details['inne'] = $details['inne'] . " zł/szt" ;}
+        $details['inne'] = round($details['inne'],2);
         $details['srZuzyciePaszy'] = $details['sumaPaszy'] /  ( $details['wagaZywaTucznikow'] - $details['wagaWarchlakow']);
         $details['srZuzyciePaszy'] = round( $details['srZuzyciePaszy'],2);
         $srZuzycie =  $details['srZuzyciePaszy'];
@@ -1438,8 +1461,6 @@ class tuczkontraktowy extends Module {
 
         $details['srPrzyrostDobowy'] = ($details['srWagaTucznika'] - $details['srWagaWarchlaka']) / $details['czasTuczu'];
         $details['srPrzyrostDobowy'] = round($details['srPrzyrostDobowy'],2);
-
-        $details['pelnowartosciowe'] = $details['sumaTucznikow'] - $details['konfiskaty'];
         $details['upadki'] = ($details['iloscPadlych'] + $details['konfiskaty']) / $details['pelnowartosciowe'];
         $details['upadki'] = $details['upadki'] * 100;
         $details['upadki'] = round($details['upadki'],2);
@@ -1452,13 +1473,10 @@ class tuczkontraktowy extends Module {
             $a = round($a,1);
         }
         $details['upadki'] = $a;
-
         $details['bazowaWartosc'] = custom::change_spearator($details['bazowaCena'],",",".") * $details['pelnowartosciowe']  ;
         $details['weterynariaWartosc'] = custom::change_spearator($details['weterynariaCena'],",",".") * $details['pelnowartosciowe']  ;
         $details['suma'] += $details['bazowaWartosc'];
         $details['bazowaWartosc'] = number_format($details['bazowaWartosc'], 2,',',' ');
-        $details['suma'] += $details['weterynariaWartosc'];
-        $details['weterynariaWartosc'] = number_format($details['weterynariaWartosc'], 2,',',' ');
         
         if($details['upadki'] > 3){
             $val = 3 - $details['upadki'];
@@ -1489,7 +1507,6 @@ class tuczkontraktowy extends Module {
         $details['suma'] += $details['suboptimalWartosc'];
         $details['suma'] += $details['badweightWartosc'];
 
-        $details['karaWagi'] = 0;
 
         $details['premiowaneWartosc'] = number_format($details['premiowaneWartosc'], 2,',',' ');
         $details['suboptimalWartosc'] = number_format($details['suboptimalWartosc'], 2,',',' ');
@@ -1523,12 +1540,21 @@ class tuczkontraktowy extends Module {
             $details['nfPrice'] = custom::change_spearator($details['nfPrice'] ,".",",")." zł";
 
         }else{
+            if($details['inne'] > custom::change_spearator($details['weterynariaCena'],",",".")){
+                //minus
+                $details['weterynariaWartosc'] =   $details['inne'] - custom::change_spearator($details['weterynariaCena'],",",".");
+                $details['weterynariaWartosc'] = $details['weterynariaWartosc'] * $details['pelnowartosciowe'];
+                $details['weterynariaWartosc'] = $details['weterynariaWartosc'] * (-1);
+            }else{
+                //+
+                $details['weterynariaWartosc'] = custom::change_spearator($details['weterynariaCena'],",",".") -  $details['inne'] ;
+                $details['weterynariaWartosc'] = $details['weterynariaWartosc'] * $details['pelnowartosciowe'];
+            }
             $premia = 0;
             $details['nfPrice'] = 0;
             $waga = $details['wagaZywaTucznikow'] ;
             $waga = $waga / $details['pelnowartosciowe'];
             $wspolczynnik = 0;
-            $details['nf'] = true;
             if($waga >= 126.1){
                 $wspolczynnik = 2.90;
             }
@@ -1563,7 +1589,9 @@ class tuczkontraktowy extends Module {
                 $premia = $avg * -6.0;
             }
             $details['nfPrice'] = $details['pelnowartosciowe'] * $premia;
+            $details['suma'] += $details['nfPrice'];
         }
+        $details['nfPrice'] = number_format($details['nfPrice'], 2,',',' ');
         $details['upadki']  = custom::change_spearator($details['upadki'],".",",");
         $details['srZuzyciePaszy'] = custom::change_spearator($details['srZuzyciePaszy'],".",",");
         $details['srWagaTucznika'] =  custom::change_spearator($details['srWagaTucznika'],".",",");
@@ -1572,6 +1600,10 @@ class tuczkontraktowy extends Module {
         $details['weterynariaCena'] = custom::change_spearator($details['weterynariaCena'],".",",") ;
         $details['sumaperone'] = $details['suma'] / $details['pelnowartosciowe'];
         $details['sumaperone'] = number_format($details['sumaperone'], 2,',',' ');
+        $details['suma'] += $details['weterynariaWartosc'];
+        $details['weterynariaWartosc'] = number_format($details['weterynariaWartosc'], 2,',',' ');
+        $details['inne'] = custom::change_spearator($details['inne'],".",",");
+        $details['karaWagi'] = number_format($details['karaWagi'], 2,',',' ');
         $details['suma'] = number_format($details['suma'], 2,',',' ');
         return $details;
     }
@@ -1618,6 +1650,7 @@ class tuczkontraktowy extends Module {
         $details['transportedTucznik'] = 0;
         $details['transportedTucznikPrice'] = 0;
         $details['kosztyInne'];
+
         foreach($dostawy as $dostawa){
             $details['sumaWarchlakow'] += $dostawa['amount'];
             $fvs = Utils_RecordBrowserCommon::get_records("kontrakty_faktury_pozycje" , array("id" => $dostawa['fakt_poz']),array(),array());
@@ -1656,6 +1689,11 @@ class tuczkontraktowy extends Module {
         $details['pelnowartosciowe'] = $details['tucznikAmount'] - $details['konfiskaty'] - $details['iloscPadlych'];
         $details['zyskRolnik'] = 0;
         $rolnikRaport = $this->raportRolnikData($record);
+        if($rolnikRaport['nf']){
+            $details['nf'] = $rolnikRaport['nf'];
+            $details['nfPrice'] = $rolnikRaport['nfPrice'];
+        }
+
         $details['zyskRolnik'] = $rolnikRaport['suma'];
         $details['zyskRolnik'] = custom::change_spearator( $details['zyskRolnik'],",",".");
         $details['zyskRolnik'] = custom::change_spearator( $details['zyskRolnik']," ","");
@@ -1885,10 +1923,10 @@ class tuczkontraktowy extends Module {
             $this->set_module_variable("viewType" , "warchlak");
         }
         if(!$this->get_module_variable("currentNumWeek")){  
-            $this->set_module_variable("currentNumWeek",date("W"));
+            $this->set_module_variable("currentNumWeek",strtotime(date("Y-m-d")));
         }
         if(!$this->get_module_variable("currentNumMonth")){
-            $this->set_module_variable("currentNumMonth",date("n"));
+            $this->set_module_variable("currentNumMonth",strtotime(date("Y-m-d")));
         }
         if($_REQUEST['timeType']){
             $timeType = $_REQUEST['timeType'];
@@ -1899,22 +1937,22 @@ class tuczkontraktowy extends Module {
             $this->set_module_variable("viewType" , $viewType);
         }
         if($_REQUEST['prevWeek']){
-            $this->set_module_variable("currentNumWeek" , $this->get_module_variable("currentNumWeek") -1);
+            $this->set_module_variable("currentNumWeek" , strtotime('-1 week',$this->get_module_variable("currentNumWeek")));
         }
         if($_REQUEST['prevMonth']){
-            $this->set_module_variable("currentNumMonth" , $this->get_module_variable("currentNumMonth") -1);
+            $this->set_module_variable("currentNumMonth" , strtotime('-1 month',$this->get_module_variable("currentNumMonth")));
         }
         if($_REQUEST['nextWeek']){
-            $this->set_module_variable("currentNumWeek" , $this->get_module_variable("currentNumWeek") + 1);
+            $this->set_module_variable("currentNumWeek" , strtotime('+1 week',$this->get_module_variable("currentNumWeek")));
         }
         if($_REQUEST['nextMonth']){
-            $this->set_module_variable("currentNumMonth" , $this->get_module_variable("currentNumMonth") + 1);
+            $this->set_module_variable("currentNumMonth" ,strtotime('+1 month',$this->get_module_variable("currentNumMonth")));
         }
         if($_REQUEST['currentWeek']){
-            $this->set_module_variable("currentNumWeek" , date("W"));
+            $this->set_module_variable("currentNumWeek" ,strtotime(date("Y-m-d")));
         }
         if($_REQUEST['currentMonth']){
-            $this->set_module_variable("currentNumMonth" , date("n") );
+            $this->set_module_variable("currentNumMonth" ,strtotime(date("Y-m-d")));
         }
 
         if( $this->get_module_variable("viewType") == 'tucznik'){
@@ -1945,6 +1983,8 @@ class tuczkontraktowy extends Module {
         $type = "report".$this->get_module_variable("timeType");
         if($this->get_module_variable("timeType") == "Weeks"){
             $currentNumWeek = $this->get_module_variable("currentNumWeek");
+            $currentNumWeek = date("W",  $currentNumWeek );
+            $year = date("Y", $this->get_module_variable("currentNumWeek"));
             $weeks = [];
             $contractsArrayIds = array();
             $weeksSums = array();
@@ -1952,15 +1992,24 @@ class tuczkontraktowy extends Module {
             for($i = ($currentNumWeek - 10); $i<=$currentNumWeek +2; $i++){
                 $weeksSums[$i]['sum'] = 0;
                 $weeksSums[$i]['zal'] = 0;
-                if($i == $currentNumWeek){
-                    $weeks[$i] = array("week" => $i, "current" => true);
+                $w = $i;
+                $y = $year;
+                if($i <= 0){
+                    $w = 52 + $i;
+                    $y = $year - 1;
+                }else if($i > 52){
+                    $w = $i - 52;
+                    $y = $year + 1;
+                }
+                if($w == $currentNumWeek){
+                    $weeks[$w] = array("week" => $w, "current" => true, 'year' => $y);
                 }else{
-                    $weeks[$i] = array("week" => $i);
+                    $weeks[$w] = array("week" => $w , 'year' => $y);
                 }
             }
             foreach($weeks as $key => $value){
                 $w = $key;
-                $year = date("Y");
+                $year = $value['year'];
                 $dateStart = date("Y-m-d" , strtotime($year."W".$w));
                 $dateEnd =  date("Y-m-d", strtotime($dateStart." +6days"));
                 $contractsRbo = new RBO_RecordsetAccessor('kontrakty');
@@ -2005,6 +2054,8 @@ class tuczkontraktowy extends Module {
         }
         else{
             $currentNumMonth = $this->get_module_variable("currentNumMonth");
+            $year = date("Y", $this->get_module_variable("currentNumMonth"));
+            $currentNumMonth = date("n", $currentNumMonth );
             $months = [];
             $contractsArrayIds = array();
             $monthSums = array();
@@ -2012,15 +2063,24 @@ class tuczkontraktowy extends Module {
             for($i = ($currentNumMonth - 5); $i<=$currentNumMonth + 1; $i++){
                 $monthSums[$i]['sum'] = 0;
                 $monthSums[$i]['zal'] = 0;
+                $m = $i;
+                $y = $year;
+                if($i <= 0){
+                    $m = 12+$i;
+                    $y = $year - 1;
+                }else if($i > 12){
+                    $m = 12 - $i;
+                    $y = $year + 1;
+                }
                 if($i == $currentNumMonth){
-                    $months[$i] = array("month" => __(date("F",strtotime("2019-$i-01")) ) , "current" => true);
+                    $months[$m] = array("month" => __(date("F",strtotime("2019-$m-01")) ) , "current" => true , 'year' => $y);
                 }else{
-                    $months[$i] = array("month" =>  __(date("F",strtotime("2019-$i-01"))) );
+                    $months[$m] = array('year' => $y,  "month" =>  __(date("F",strtotime("2019-$m-01"))) );
                 }
             }
             foreach($months as $key => $value){
                 $w = $key;
-                $year = date("Y");
+                $year = $value['year'];
                 $dateStart = date("Y-m-01" , strtotime($year."-".$w."-01"));
                 $dateEnd =  date("Y-m-t", strtotime($year."-".$w."-01"));
                 $contractsRbo = new RBO_RecordsetAccessor('kontrakty');
@@ -2135,6 +2195,8 @@ class custom{
         if($table_id == 'P') {
             $feeds = Utils_CommonDataCommon::get_array("/Faktury/pasze");
             array_push($fields, array('name' => 'feed_type', 'type' => 'select', 'options' => $feeds));
+            array_push($fields, array('name' => 'weightcarempty', 'type' => 'text'));
+            array_push($fields, array('name' => 'weightcarfull', 'type' => 'text'));
         }
 
         if($table_id == 'T') {
@@ -2215,252 +2277,4 @@ class custom{
     }
 }
 
-
-
-class Raporty{
-
-    private $basic = null;
-    private $amount_inserted = 0;
-    private $amount_recived = 0;
-    private $death = 0;
-    private $zalozenia = null;
-    private $feed = null;
-    private $feed_all_weight = 0;
-    private $avg_use_feed = 0;
-    private $rbo_fv_pos = null;
-    private $avg_weight_pig = 0;
-    private $avg_pig_grow = 0;
-    private $avg_meatines = 0;
-    private $avg_eff = 0;
-    private $tucz_time = 0;
-    private $feed_cost = 0;
-    private $wet_cost = 0;
-    private $tucz_cost = 0;
-    private $diff = 0;
-    private $warch_cost = 0;
-    private $premia = 0;
-    private $weight_st = null;
-    private $weight_gr = null;
-    private $weight_fin = null;
-    private $price_feed = null;
-    private $cost_death_one = 0;
-    private $szt_netto = 0;
-    private $avg_price_meat = 0;
-    private $suma_potracen = 0;
-    private $transport_cost = 0;
-    private $transport_netto = 0;
-
-    function __construct($basic_data){
-        $this->basic = $basic_data;
-        $this->rbo_fv_pos = new RBO_RecordsetAccessor("kontrakty_faktury_pozycje");
-        $this->set_feed();
-        $this->set_odebrane();
-        $this->set_wstawione();
-        $this->set_zalozenia();
-        $this->set_other();
-        $this->set_transporty();
-        $this->avg_use_feed = round(($this->feed_all_weight / $this->amount_recived),3);
-        $this->avg_pig_grow = (($this->avg_weight_pig *  $this->amount_recived) - ($this->zalozenia['weight_pig_start'] *  $this->amount_inserted )) / $this->amount_recived;
-        $this->avg_use_feed_per_kg = $this->avg_use_feed / $this->avg_pig_grow;
-        $this->death = $this->amount_inserted - $this->amount_recived;
-        $this->warch_cost = $this->amount_inserted * $this->zalozenia['price_pig'];
-        $this->all_feed_price_netto = 0;
-        $this->diff = ($this->tucz_cost - $this->feed_cost - $this->warch_cost - $this->wet_cost);
-        $this->premia = round((floatval(substr($this->zalozenia['farmer'], 0, -3)) * -1 + ($this->diff / $this->amount_recived)),2);
-        $this->weight_st =  ($this->zalozenia['starter_to'] - $this->zalozenia['weight_pig_start']) * $this->zalozenia['average_use_st'];
-        $this->weight_gr =  ($this->zalozenia['grower_to'] - $this->zalozenia['grower_from']) * $this->zalozenia['average_use_gr'];
-        $this->weight_fin = ($this->zalozenia['weight_pig_end'] - $this->zalozenia['finisher_from']) * $this->zalozenia['average_use_fin'];
-        $this->price_feed = 
-        ($this->weight_st * $this->currency_to_float($this->zalozenia['price_starter'])) + 
-        ($this->weight_gr * $this->currency_to_float($this->zalozenia['price_grower']))+ 
-        ($this->weight_fin * $this->currency_to_float($this->zalozenia['price_finisher']));
-        $this->szt_netto = round((($this->currency_to_float($this->zalozenia['price_pig'])
-         + $this->price_feed / 2 ) / ((100 - $this->zalozenia['lose']) / 100) 
-         + $this->currency_to_float($this->zalozenia['farmer'])+ 
-         $this->currency_to_float($this->zalozenia['med']) + ($this->price_feed / 2)),2);
-    }
-    function get_results(){
-        $details = array();
-        $details['farmer_name'] =  Utils_RecordBrowserCommon::get_record("company",$this->basic['farmer'])['company_name'];
-        $details['amount_pigs'] = $this->amount_inserted;
-        $details['date_start'] = $this->basic['data_start'];
-        $details['key'] = $this->basic['kolczyk'];
-        $details['avg_eff'] = round($this->avg_eff,2);
-        $details['warch_cost'] = $this->display_number($this->warch_cost);
-        $details['wet_cost'] = $this->display_number($this->wet_cost);
-        $details['diff'] = $this->display_number($this->diff);
-        $details['avg_pig_grow'] = $this->display_number(round($this->avg_pig_grow,2));
-        $details['feed_kg'] = $this->display_number($this->feed_all_weight);
-        $details['pigs_death'] = $this->amount_inserted - $this->amount_recived;
-        $details['tucz_cost'] = $this->display_number($this->tucz_cost);
-        $details['avg_weight_pig'] = round($this->avg_weight_pig,2);
-        $details['farmer_base'] = round(floatval(substr($this->zalozenia['farmer'], 0, -3)),2);
-        $details['premia'] =$this->premia;
-        $details['feed_cost'] = $this->display_number($this->feed_cost);
-        $details['farmer_profit'] = round(floatval($this->zalozenia['farmer'] + $this->premia),2);
-        $details['value_warchlak'] = $this->display_number($this->warch_cost);
-        $details['avg_use_feed_per_kg'] = round(floatval($this->avg_use_feed_per_kg),2);
-        $details['avg_meatens'] = $this->display_number($this->avg_meatines);
-        $details['premia'] = $this->premia;
-        $details['avg_price_feed'] =  round($this->feed_cost / $this->feed_all_weight,4);
-        $details['tucz_time'] = round($this->tucz_time + 0.5);
-        $details['dead_in_percent'] = round((($this->death / $this->amount_recived) * 100),2)." %";
-        $details['zuPasza'] = $this->feed_all_weight && $this->amount_recived ? round(($this->feed_all_weight / $this->amount_recived),3). " kg" : "Brakuje danych";
-        $details['zuPasza'] = $this->display_number($details['zuPasza']);
-        $details['zuPaszaDeath'] = round((($this->feed_all_weight / $this->amount_recived) * ($this->amount_inserted - $this->amount_recived) * 0.33),2);
-        $details['recived_pigs'] = $this->amount_recived ? $this->amount_recived . " szt" : "Brak odbiorów.";
-        $details['start_weight'] = $this->zalozenia['weight_pig_start'] ? $this->zalozenia['weight_pig_start']. " kg" : "Nie ustawiono w założeniach" ;
-        $details['sum_cost_death'] = round((floatval(substr($this->zalozenia['price_pig'],0,-3)) * $details['pigs_death'] ) + ($details['zuPaszaDeath'] * $details['avg_price_feed']),2);
-        $details['cost_death_one'] = round(($details['sum_cost_death'] / $this->amount_inserted),2);
-        $details['diff_2'] = round((($this->weight_st + $this->weight_gr  + $this->weight_fin)  - $details['zuPasza'] )  * $details['avg_price_feed'],2);
-        $this->suma_potracen += $details['diff_2'];
-        $this->cost_death_one = $details['cost_death_one'];
-        $details['sum_cost_death'] = $this->display_number($details['sum_cost_death']);
-        return $details;
-    }
-    function get_extra_for_boss(){
-        $extra = array();
-        $extra['death_cost'] = (
-             $this->amount_inserted * 
-             $this->currency_to_float($this->zalozenia['price_pig']) 
-            + $this->price_feed * 0.5 * $this->amount_inserted ) * 0.03;
-        $extra['planed_death_cost'] = round($extra['death_cost'] / $this->amount_inserted);
-        $extra['diff_death_cost'] = round(($extra['planed_death_cost'] - $this->cost_death_one),2);
-        $this->suma_potracen += $extra['diff_death_cost'];
-        $extra['planned_avg_per_kg'] = round($this->szt_netto / $this->zalozenia['weight_pig_end'],2);
-        $extra['avg_price_live_weight'] = round(($this->avg_price_meat * $this->avg_eff) /100,2);
-        $extra['premium'] = round($extra['avg_price_live_weight'] - $extra['planned_avg_per_kg'],3);
-        $extra['premium_2'] =   round($extra['premium'] * $this->avg_weight_pig,2); 
-        $this->suma_potracen += $extra['premium_2'];
-        $extra['diff_1'] = round(($this->avg_weight_pig - $this->zalozenia['weight_pig_end'] ) * $extra['avg_price_live_weight'],2);
-        $this->suma_potracen += $extra['diff_1'];
-        $extra['premium'] = $this->color($extra['premium']);
-        $extra['premium_2'] = $this->color($extra['premium_2']);
-        $extra['planed_death_cost'] = $this->display_number( $extra['planed_death_cost']);
-        $extra['death_cost'] = $this->display_number( $extra['death_cost']);
-        $extra['cost_per_one_pig_live'] = round($this->wet_cost / $this->amount_inserted,2);
-        $extra['diff_3'] = round($this->currency_to_float($this->zalozenia['med'])  - $extra['cost_per_one_pig_live'],1);
-        $this->suma_potracen += $extra['diff_3'];
-        $extra['final'] = round($this->currency_to_float($this->zalozenia['farmer']) + $this->suma_potracen,2);
-        $extra['potracenia'] = $this->suma_potracen;
-        $extra['tucz_sell'] = $this->transport_netto;
-        $extra['cost_transport'] = $this->transport_cost;
-
-        return $extra;
-    }
-    function set_other(){
-        $wet = $this->rbo_fv_pos->get_records(array('typ_faktury' => 'WET' , "id" => 
-        tuczkontraktowyCommon::get_fv_ids("kontrakty_faktury_inne_faktury_tucz",$this->basic['id'])),array(),array());
-        $cost = 0;
-        foreach($wet as $w){
-            $c = $w['price']; 
-            $c = substr($c, 0, -3);
-            $cost += $c;
-
-        }
-        $this->wet_cost = $cost;
-    }
-    function currency_to_float($val){
-
-        $val = substr($val, 0, -3);
-        $val = floatval($val);
-        return $val;
-    }
-    function set_odebrane(){
-        //odebrane tuczniki
-        $received = $this->rbo_fv_pos->get_records(array("id" => 
-        tuczkontraktowyCommon::get_fv_ids("kontrakty_faktury_odbior_tucznika",$this->basic['id'])),array(),array());
-        $odbiory =  new RBO_RecordsetAccessor("kontrakty_faktury_odbior_tucznika");
-        $received_amount = 0;
-        $avg = 0;
-        $avg_m = 0;
-        $sum_weight_meat = 0;
-        $sum_weight_brutto = 0;
-        $tucz_time = null;
-        $netto = 0;
-        foreach($received as $r){
-            $records = $odbiory->get_records(array('fakt_poz' => $r['id']),array(),array());
-            $odbior = null;
-            foreach($records as $rs){$odbior = $rs;break;}
-
-            $received_amount += $r['amount'];
-            $avg += $odbior['weight_brutto'];
-            $avg_m += ($odbior['meatiness'] / 100) * $r['amount'];
-            $days = strtotime($odbior['date_recived']) - strtotime($this->basic['data_start']);
-            $days = floor($days/(60*60*24));
-            $days = $days * $r['amount'];
-            $tucz_time += $days;
-            $netto += $odbior['price_netto'];
-            $sum_weight_brutto += $odbior['weight_brutto'];
-            $sum_weight_meat += $odbior['weight_meat'];
-
-        }
-        $tucz_time = $tucz_time / $received_amount;
-        $avg_m = round((($avg_m / $received_amount) * 100),2);
-        $this->avg_price_meat = $netto / $sum_weight_meat;
-        $this->tucz_time = $tucz_time;
-        $this->tucz_cost = $netto;
-        $this->avg_eff = ($sum_weight_meat / $sum_weight_brutto) * 100;
-        $this->avg_meatines = $avg_m;
-        $this->avg_weight_pig = $avg /  $received_amount;
-        $this->amount_recived = $received_amount; 
-    }
-    function display_number($number){
-        $number = number_format($number, 2, '.', ' ');
-        return $number;
-    }
-    function set_wstawione(){
-        $amount = 0;
-        $pigs = Utils_RecordBrowserCommon::get_records("kontrakty_faktury_dostawa_warchlaka",array("id_tuczu" => $this->basic['id']));
-        foreach($pigs as $pig){
-            $amount += $pig['amount'];
-        }
-        $this->amount_inserted = $amount;
-    }
-    function color($val){
-        if($val< 0){
-            $val = "<span style='color:red;'> ".$val. " </span>";
-        }else{
-            $val= "<span style='color:green;'> ".$val. " </span>";
-        }
-        return $val;
-    }
-    function set_zalozenia(){
-        $zalozenia = Utils_RecordBrowserCommon::get_records("kontrakty_zalozenia",array('id_tuczu' => $this->basic['id']));
-        foreach($zalozenia as $z){$zalozenia = $z;break;}
-        $this->zalozenia = $zalozenia;
-    }
-    function set_transporty(){
-        $transporty = $this->rbo_fv_pos->get_records(array("id" => 
-        tuczkontraktowyCommon::get_fv_ids("kontrakty_faktury_transporty",$this->basic['id'])),array(),array());
-        $netto = 0;
-        $cost = 0;
-        foreach($transporty as $transport){
-            $netto += $this->currency_to_float($transport['netto']);
-            $cost += $this->currency_to_float($transport['transport_cost']);
-        }
-        $this->transport_netto = $netto;
-        $this->transport_cost = $cost;
-    }
-
-    function set_feed(){
-        $feeds = $this->rbo_fv_pos->get_records(array("id" => 
-        tuczkontraktowyCommon::get_fv_ids("kontrakty_faktury_dostawa_paszy",$this->basic['id'])),array(),array());
-        $all_weight_feed = 0;
-        $all_feed_price_netto = 0;
-        foreach($feeds as $f){
-            $get_price = $f['price'];
-            $get_price =  substr($get_price, 0, -3);
-            $all_feed_price_netto += $get_price * $f['amount'];
-            $all_weight_feed += $f['amount'];
-        }
-
-        $this->feed_cost = $all_feed_price_netto;
-        $this->feed_all_weight = $all_weight_feed;
-        $this->feed = $feeds;
-    }
-    function get_val($varible){
-        return $this->$varible;
-    }
-}
 ?>

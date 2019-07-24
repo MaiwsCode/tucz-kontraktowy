@@ -12,14 +12,18 @@
         <td colspan='2' > -{$details.transportedPrice} zł </td>
     </tr>
     <tr style='background:#F0F0F0;'> <td colspan='3'></td></tr>
+    {if $details.nf}
+    <tr>
+        <td>  Pasza NF  </td>
+        <td  colspan='2'> <span style='color:#96720f;'> -{$details.nfPrice} (Jest to wliczone w zysk rolinka) </span> </td>
+    </tr>
+    {else}
     <tr>
         <td>  Pasze </td>
         <td colspan='2' > - {$details.paszaPrice} </td>
     </tr>
-    <tr>
-        <td>  Pasza NF  </td>
-        <td  colspan='2'> KWOTA</td>
-    </tr>
+    {/if}
+    
     <tr>
         <td>  Sprzedaz tucznika </td>
         <td > {$details.tucznikPrice} </td>
@@ -43,7 +47,11 @@
     <tr>
 
         <td> Suma  </td>
-        <td colspan='2' class='status' > {$details.suma}zł </td>
+        {if $details.suma[0] == "-"}
+            <td> <span style='color:red;'> {$details.suma} zł </span></td>
+        {else}
+            <td> {$details.suma} zł</td>
+        {/if}
     </tr>
    
 </table>

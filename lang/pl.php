@@ -68,10 +68,11 @@ $translations['weight_on_drop']=  'Waga z rozładunku';
 $translations['weight_alive_brutto']=  'Waga żywa brutto';
 $translations['other_type']=  'Typ';
 $translations['konfiskaty']=  'Konfiskaty';
-$translations['premiowane']=  'Sztuki premiowane za wagę';
-$translations['suboptimal']=  'Sztuki nie optymalne wagowo (-5)';
-$translations['badweight']=  'Sztuki w złej wadze (-10)';
-
+$translations['premiowane']=  'Premiowane za wagę';
+$translations['suboptimal']=  'Nie optymalne wagowo (-5)';
+$translations['badweight']=  'W złej wadze (-10)';
+$translations['weightcarempty']=  'Waga auta pusto';
+$translations['weightcarfull']=  'Waga auta pełno';
 
 
 ?>

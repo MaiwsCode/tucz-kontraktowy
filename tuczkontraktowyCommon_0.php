@@ -164,7 +164,7 @@ class tuczkontraktowyCommon extends ModuleCommon {
             }
             if ($record['typ_faktury'] == "P") {
                 Utils_RecordBrowserCommon::new_record(tuczkontraktowyCommon::table_names($record['typ_faktury']), array('id_tuczu' => $_SESSION['tucz_id'],
-                    'fakt_poz' => $record['id'], 'feed_type' => 'starter'));
+                    'fakt_poz' => $record['id'], 'feed_type' => 'starter' , 'weightcarempty' => 0 , 'weightcarfull' => 0 ));
             }
             if ($record['typ_faktury'] == "OTH") {
                 Utils_RecordBrowserCommon::new_record(tuczkontraktowyCommon::table_names($record['typ_faktury']), array('id_tuczu' => $_SESSION['tucz_id'],
@@ -383,7 +383,14 @@ class tuczkontraktowyCommon extends ModuleCommon {
 		
 	}
 	public static function view_inne($record, $mode){
-
+		if($mode == "adding"){
+			$record['id_tuczu'] = $_SESSION['tucz_id'];
+			$record['fakt_poz'] = $_SESSION['fakt_poz'];
+			tuczkontraktowyCommon::hide_no_editable_fields();
+			Epesi::js('jq(".name").html("");
+				jq(".name").html("<div>'.$_SESSION["display_current_name_view"].'</div>");');
+			return $record;
+		}
 		
 	}
 

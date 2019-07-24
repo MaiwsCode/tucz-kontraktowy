@@ -2,10 +2,10 @@
 
 <table class="ttable ttable-hover ttable-bordered" style="margin-top:15px;margin-bottom:15px;user-select: text;width:60%;">
     <tr>
-        <th> Imię i Nazwisko </th>
-        <th> Data wstawienia </th>
-        <th> Ilość wstawiona </th>
-        <th> Kolczyk </th>
+        <th style='font-size:16px;'> Imię i Nazwisko </th>
+        <th style='font-size:16px;'> Data wstawienia </th>
+        <th style='font-size:16px;'> Ilość wstawiona </th>
+        <th style='font-size:16px;'> Kolczyk </th>
     </tr>
     <tr>
         <td> {$details.farmer_name} </td>
@@ -38,7 +38,7 @@
     </tr>
     <tr>
         <td> Koszt leczenia na sztukę pełnowartościową	</td>
-        <td> {$details.inne} </td>
+        <td> {$details.inne} zł/szt </td>
     </tr>
     <tr>
         <td> Średnie zużycie paszy	</td>
@@ -48,10 +48,10 @@
 <table class="ttable ttable-hover ttable-bordered" style="margin-top:15px;margin-bottom:15px;user-select: text;width:60%;">
 
     <tr>
-        <th colspan=''>Składnik cenowy</th>
-        <th colspan=''>Sztuki</th>
-        <th colspan=''>Cena jednostkowa</th>
-        <th colspan=''>Wartość</th>
+        <th colspan='' style='font-size:16px;'>Składnik cenowy</th>
+        <th colspan='' style='font-size:16px;'>Sztuki</th>
+        <th colspan='' style='font-size:16px;'>Cena jednostkowa</th>
+        <th colspan='' style='font-size:16px;'>Wartość</th>
     </tr>
     <tr>
         <td> Stawka bazowa </td>
@@ -63,7 +63,11 @@
         <td> Weterynaria </td>
         <td> {$details.pelnowartosciowe} szt </td>
         <td> {$details.weterynariaCena} zł/szt </td>
-        <td> {$details.weterynariaWartosc} zł </td>
+        {if $details.weterynariaWartosc[0] == "-"}
+            <td> <span style='color:red;'> {$details.weterynariaWartosc} zł </span> </td>
+        {else}
+            <td> {$details.weterynariaWartosc} zł </td>
+        {/if}
     </tr>
     <tr>
         <td> Upadki </td>
@@ -116,18 +120,18 @@
 </table>
     <table class="ttable ttable-hover ttable-bordered" style="margin-top:15px;margin-bottom:15px;user-select: text;width:60%;">
     <tr>
-        <th colspan="3"> Pasza </th>
+        <th colspan="3" style='font-size:16px;'> Pasza </th>
 
     </tr>
         {if $details.nf }
     <tr>
         <td> Nowa formuła - NF </td>
-        <td colspan='2'> {$details.nfPrice} </td>
+        <td colspan='2'> {$details.nfPrice} zł </td>
     </tr>
     {else}
     <tr>
         <td> Formuła Pełna - PF  </td>
-        <td colspan='2'> {$details.nfPrice}  </td>
+        <td colspan='2'> {$details.nfPrice} zł  </td>
     </tr>
     {/if}
     <tr style='background:#F0F0F0;'> <td colspan='3'></td></tr>
