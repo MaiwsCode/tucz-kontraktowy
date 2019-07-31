@@ -84,6 +84,14 @@ class tuczkontraktowy extends Module {
         $this->display_module( $gb );
     }
 
+    public function tuczeTabView($record){
+        
+        $rb = $this->init_module(Utils_RecordBrowser::module_name(),'kontrakty','addon');
+		$this->display_module($rb, array(array('farmer'=> $record['id']), array(), array("data_start" => "DESC")), 'show_data'); 
+
+    }
+
+
     public function pasze_list($record){
 
         if($_REQUEST['limits'] == true){
@@ -369,12 +377,12 @@ class tuczkontraktowy extends Module {
 
             $reciver = new RBO_RecordsetAccessor('company');
             $rec = $reciver->get_record($p['company']);
-            $price += $p['netto'];
+            $price += custom::change_spearator($p['netto'],",",".");
             $gb->add_row(
                 $link,
                 $p->date,
                 $p->amount,
-                number_format($p->netto,2,","," "),
+                number_format(custom::change_spearator($p->netto,",","."),2,","," "). " zł",
                 $rec->company_name
             );
         
@@ -1521,16 +1529,18 @@ class tuczkontraktowy extends Module {
             if($waga >= 126.1){
                 $wspolczynnik = 2.90;
             }
-            else if($waga >= 122.1 && $waga <= 126){
+            else if($waga >= 122.1 && $waga <= 126.09){
                 $wspolczynnik = 2.85;
             }
-            else if ($waga >= 118.1 && $waga <= 122){
+            else if ($waga >= 118.1 && $waga <= 122.09){
                 $wspolczynnik = 2.80;
             }
-            else if($waga >= 115.1 && $waga <= 118){
+            else if($waga >= 115.1 && $waga <= 118.09){
                 $wspolczynnik = 2.75;
             }
-            else if($waga >= 110.1 && $waga <= 115){
+            else if($waga >= 110.1 && $waga <= 115.09){
+                $wspolczynnik = 2.70;
+            }else if($waga < 110.1) {
                 $wspolczynnik = 2.70;
             }
             $details['nfPrice'] = (custom::change_spearator($details['przyrost'],",",".")* $wspolczynnik) * custom::change_spearator($cenaPaszy,",",".");
@@ -1558,16 +1568,18 @@ class tuczkontraktowy extends Module {
             if($waga >= 126.1){
                 $wspolczynnik = 2.90;
             }
-            else if($waga >= 122.1 && $waga <= 126){
+            else if($waga >= 122.1 && $waga <= 126.09){
                 $wspolczynnik = 2.85;
             }
-            else if ($waga >= 118.1 && $waga <= 122){
+            else if ($waga >= 118.1 && $waga <= 122.09){
                 $wspolczynnik = 2.80;
             }
-            else if($waga >= 115.1 && $waga <= 118){
+            else if($waga >= 115.1 && $waga <= 118.09){
                 $wspolczynnik = 2.75;
             }
-            else if($waga >= 110.1 && $waga <= 115){
+            else if($waga >= 110.1 && $waga <= 115.09){
+                $wspolczynnik = 2.70;
+            }else if($waga < 110.1) {
                 $wspolczynnik = 2.70;
             }
             $details['nf'] = false;
@@ -2013,7 +2025,7 @@ class tuczkontraktowy extends Module {
                 $dateStart = date("Y-m-d" , strtotime($year."W".$w));
                 $dateEnd =  date("Y-m-d", strtotime($dateStart." +6days"));
                 $contractsRbo = new RBO_RecordsetAccessor('kontrakty');
-                $contracts = $contractsRbo->get_records(array(">=data_start" => $dateStart, "<=data_start" => $dateEnd),array(),array());
+                $contracts = $contractsRbo->get_records(array(">=data_start" => $dateStart, "<=data_start" => $dateEnd, '!status' => array("Done","Ended","rejected")),array(),array());
                 foreach($contracts as $contract){
                     foreach($weeks as $k => $v){
                         $contractsArrayIds[$contract['id']]['weeks'][$k] = 0;

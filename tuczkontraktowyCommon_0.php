@@ -14,7 +14,9 @@ class tuczkontraktowyCommon extends ModuleCommon {
 	    	'__icon__'=>'tucz.png','__icon_small__'=>'tucz.png'
 			)));
 	}
-
+	public static function tuczeTabViewLabel() {
+        return array('label' => 'Tucze', 'show' => true);
+    }
 
 	public static function critDates() {
 		$date_start = date("Y-m-d");
