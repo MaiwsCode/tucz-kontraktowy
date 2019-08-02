@@ -117,31 +117,26 @@
         {/if}
     </tr>
 
-</table>
-    <table class="ttable ttable-hover ttable-bordered" style="margin-top:15px;margin-bottom:15px;user-select: text;width:60%;">
-    <tr>
-        <th colspan="3" style='font-size:16px;'> Pasza </th>
-
-    </tr>
         {if $details.nf }
     <tr>
-        <td> Nowa formuła - NF </td>
-        <td colspan='2'> {$details.nfPrice} zł </td>
+        <td colspan='3'> Pasze (NF) </td>
+        <td colspan='1'> {$details.nfPrice} zł </td>
     </tr>
     {else}
     <tr>
-        <td> Formuła Pełna - PF  </td>
-        <td colspan='2'> {$details.nfPrice} zł  </td>
+        <td colspan='3'> Pasze (Premia)  </td>
+        <td colspan='1'> {$details.nfPrice} zł  </td>
     </tr>
     {/if}
-    <tr style='background:#F0F0F0;'> <td colspan='3'></td></tr>
     <tr>
-        <th> SUMA: </th>
-        <td colspan="2"> {$details.suma}  zł </td>
+        <td colspan='3'> <h2> Zysk do sztuki: </h2> </td>
+        <td colspan="1"><h2> {$details.sumaperone} zł/szt  </h2> </td>
     </tr>
     <tr>
-        <th> Za sztukę: </th>
-        <td colspan="2"> {$details.sumaperone} zł/szt </td>
+        <td colspan='3'> <h2> Do wypłaty: </h2> </td>
+        <td colspan="1"><h2> {$details.suma} zł </h2> </td>
     </tr>
+
+
     </table>
 
