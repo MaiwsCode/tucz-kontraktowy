@@ -33,7 +33,7 @@
         {if $details.suma[0] == "-"}
             <td colspan='2' > <h2> <span style='color:red;'> {$details.suma} zł </span> </h2></td>
         {else}
-            <td colspan='2' <h2> {$details.suma} zł </h2></td>
+            <td colspan='2' > <h2> {$details.suma} zł </h2></td>
         {/if}
     </tr>
    

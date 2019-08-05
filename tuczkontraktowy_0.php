@@ -1322,17 +1322,18 @@ class tuczkontraktowy extends Module {
         $sumPrice = 0;
         foreach($fvs_poz_list as $fv_id){
             $fvs  = new RBO_RecordsetAccessor("kontrakty_faktury");
-            $fvs_list = $fvs->get_records(array('id'=>$fv_id['faktura'] , 'typ_faktury' => '1'),array(),array("date"=> "DESC"));
-            foreach ($fvs_list as $id) {
-                $sumPrice += substr($fv_id['price'],0,-3);
-                $gb->add_row(
-                    '',
-                    number_format($fv_id['price'],2,',',' ' ). " zł",
-                    $id->record_link($id->get_val('company')),
-                    $id->create_default_linked_label(false,false),
-                    $id->record_link($id->get_val('date'))
-                );
-
+            if($fv_id['faktura'] != ''){
+                $fvs_list = $fvs->get_records(array('id'=>$fv_id['faktura'] , 'typ_faktury' => '1'),array(),array("date"=> "DESC"));
+                foreach ($fvs_list as $id) {
+                    $sumPrice += substr($fv_id['price'],0,-3);
+                    $gb->add_row(
+                        '',
+                        number_format($fv_id['price'],2,',',' ' ). " zł",
+                        $id->record_link($id->get_val('company')),
+                        $id->create_default_linked_label(false,false),
+                        $id->record_link($id->get_val('date'))
+                    );
+                }
             }
         }
         $this->display_module( $gb );
@@ -1358,27 +1359,26 @@ class tuczkontraktowy extends Module {
             }
         }
 
-        $fvs_poz  = new RBO_RecordsetAccessor("kontrakty_faktury_pozycje");
-        $fvs_poz_list = $fvs_poz->get_records(array('id'=>$ids_list),array(),array());
         $ids_list = [];
         $sumPrice = 0;
         foreach($fvs_poz_list as $fv_id){
             $fvs  = new RBO_RecordsetAccessor("kontrakty_faktury");
-            $fvs_list = $fvs->get_records(array('id'=>$fv_id['faktura'], 'typ_faktury' => '2'),array(),array("date"=> "DESC"));
-            foreach ($fvs_list as $id) {
-                $sumPrice += substr($fv_id['price'],0,-3);
-                $gb->add_row(
-                    '',
-                    number_format($fv_id['price'],2,',',' ' ). " zł",
-                    $id->record_link($id->get_val('company')),
-                    $id->create_default_linked_label(false,false),
-                    $id->record_link($id->get_val('date'))
-                );
-
+            if($fv_id['faktura'] != ''){
+                $fvs_list = $fvs->get_records(array('id'=>$fv_id['faktura'], 'typ_faktury' => '2'),array(),array("date"=> "DESC"));
+                foreach ($fvs_list as $id) {
+                    $sumPrice += substr($fv_id['price'],0,-3);
+                    $gb->add_row(
+                        '',
+                        number_format($fv_id['price'],2,',',' ' ). " zł",
+                        $id->record_link($id->get_val('company')),
+                        $id->create_default_linked_label(false,false),
+                        $id->record_link($id->get_val('date'))
+                    );
+                }
             }
         }
         $this->display_module( $gb );
-        $gb = &$this->init_module('Utils/GenericBrowser', null, 'w');
+        $gb = &$this->init_module('Utils/GenericBrowser', null, 'ws');
         $gb->set_table_columns(
             array(
                 array('name'=>'Faktury sprzedażowe', 'width'=>20 ),
@@ -1393,29 +1393,28 @@ class tuczkontraktowy extends Module {
         $ids_list = [];
         for($i = 0;$i<count($tables_names);$i++){
             $rbo  = new RBO_RecordsetAccessor($tables_names[$i]);
-            $ids = $rbo->get_records(array('id_tuczu' => $record['id'], 'typ_faktury' => '0'),array(),array());
+            $ids = $rbo->get_records(array('id_tuczu' => $record['id']),array(),array());
             foreach($ids as $id){
                 $ids_list[] = $id->fakt_poz;
             }
         }
 
-        $fvs_poz  = new RBO_RecordsetAccessor("kontrakty_faktury_pozycje");
-        $fvs_poz_list = $fvs_poz->get_records(array('id'=>$ids_list),array(),array());
         $ids_list = [];
         $sumPrice = 0;
         foreach($fvs_poz_list as $fv_id){
             $fvs  = new RBO_RecordsetAccessor("kontrakty_faktury");
-            $fvs_list = $fvs->get_records(array('id'=>$fv_id['faktura']),array(),array("date"=> "DESC"));
-            foreach ($fvs_list as $id) {
-                $sumPrice += substr($fv_id['price'],0,-3);
-                $gb->add_row(
-                    '',
-                    number_format($fv_id['price'],2,',',' ' ). " zł",
-                    $id->record_link($id->get_val('company')),
-                    $id->create_default_linked_label(false,false),
-                    $id->record_link($id->get_val('date'))
-                );
-
+            if($fv_id['faktura'] != ''){
+                $fvs_list = $fvs->get_records(array('id'=>$fv_id['faktura'],'typ_faktury' => '0' ),array(),array("date"=> "DESC"));
+                foreach ($fvs_list as $id) {
+                    $sumPrice += substr($fv_id['price'],0,-3);
+                    $gb->add_row(
+                        '',
+                        number_format($fv_id['price'],2,',',' ' ). " zł",
+                        $id->record_link($id->get_val('company')),
+                        $id->create_default_linked_label(false,false),
+                        $id->record_link($id->get_val('date'))
+                    );
+                }
             }
         }
         $this->display_module( $gb );
@@ -1441,23 +1440,22 @@ class tuczkontraktowy extends Module {
             }
         }
 
-        $fvs_poz  = new RBO_RecordsetAccessor("kontrakty_faktury_pozycje");
-        $fvs_poz_list = $fvs_poz->get_records(array('id'=>$ids_list),array(),array());
         $ids_list = [];
         $sumPrice = 0;
         foreach($fvs_poz_list as $fv_id){
             $fvs  = new RBO_RecordsetAccessor("kontrakty_faktury");
-            $fvs_list = $fvs->get_records(array('id'=>$fv_id['faktura'] , '!typ_faktury' => array( '0','1','2')),array(),array("date"=> "DESC"));
-            foreach ($fvs_list as $id) {
-                $sumPrice += substr($fv_id['price'],0,-3);
-                $gb->add_row(
-                    '',
-                    number_format($fv_id['price'],2,',',' ' ). " zł",
-                    $id->record_link($id->get_val('company')),
-                    $id->create_default_linked_label(false,false),
-                    $id->record_link($id->get_val('date'))
-                );
-
+            if($fv_id['faktura'] != ''){
+                $fvs_list = $fvs->get_records(array('id'=>$fv_id['faktura'] , '!typ_faktury' => array( '0','1','2')),array(),array("date"=> "DESC"));
+                foreach ($fvs_list as $id) {
+                    $sumPrice += substr($fv_id['price'],0,-3);
+                    $gb->add_row(
+                        '',
+                        number_format($fv_id['price'],2,',',' ' ). " zł",
+                        $id->record_link($id->get_val('company')),
+                        $id->create_default_linked_label(false,false),
+                        $id->record_link($id->get_val('date'))
+                    );
+                }
             }
         }
         $this->display_module( $gb );
@@ -1689,7 +1687,6 @@ class tuczkontraktowy extends Module {
             $details['nfPrice'] = custom::change_spearator($details['przyrost'],",",".") * $wspolczynnik *  custom::change_spearator($cenaPaszy,",",".");
             $details['nfPrice'] = round($details['nfPrice'],2);
             $details['suma'] += $details['nfPrice'];
-            $details['nfPrice'] = number_format($details['nfPrice'], 2,',',' ');
 
         }else{
             if($details['inne'] > custom::change_spearator($details['weterynariaCena'],",",".")){
@@ -1746,7 +1743,7 @@ class tuczkontraktowy extends Module {
             $details['nfPrice'] = $details['pelnowartosciowe'] * $premia;
             $details['suma'] += $details['nfPrice'];
         }
-
+        $details['nfPrice'] = number_format($details['nfPrice'], 2,',',' ');
         $details['upadki']  = custom::change_spearator($details['upadki'],".",",");
         $details['srZuzyciePaszy'] = custom::change_spearator($details['srZuzyciePaszy'],".",",");
         $details['srWagaTucznika'] =  custom::change_spearator($details['srWagaTucznika'],".",",");
@@ -1857,7 +1854,6 @@ class tuczkontraktowy extends Module {
         $details['suma']   -= $details['transportedPrice'];
         $details['suma']  -= $details['zyskRolnik'];
         $details['suma']  += $details['tucznikPrice'];
-        $details['suma']  -= $details['paszaPrice'];
         $details['perOne'] = $details['suma'] / $details['pelnowartosciowe'];
         $details['cenaZaWarchlaka'] = $details['kosztyWarchlaka'] / $details['sumaWarchlakow'];
         $details['tucznikWBC'] =  $details['tucznikPrice'] /  $details['tucznikWBC'] ;
@@ -1867,7 +1863,6 @@ class tuczkontraktowy extends Module {
         $details['zyskRolnik']  = number_format($details['zyskRolnik'], 2,',',' ');
         $details['perOne'] =  number_format($details['perOne'], 2,',',' ');
         $details['suma'] =  number_format($details['suma'], 2,',',' ');
-        $details['paszaPrice'] =  number_format($details['paszaPrice'], 2,',',' ');
         $details['transportedPrice'] =  number_format($details['transportedPrice'], 2,',',' ');
         $details['cenaZaWarchlaka'] =  number_format($details['cenaZaWarchlaka'], 2,',',' ');
         $details['kosztyWarchlaka'] =  number_format($details['kosztyWarchlaka'], 2,',',' ');
