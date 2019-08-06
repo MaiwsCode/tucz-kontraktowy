@@ -22,6 +22,10 @@
         <td>  Sprzedaz tucznika </td>
         <td colspan='2'  > {$details.tucznikPrice} </td>
     </tr>
+        <tr>
+        <td>  Cena WBC </td>
+        <td colspan='2'  > {$details.tucznikWBC} zł/kg </td>
+    </tr>
     <tr>
         <td> Na sztukę  </td>
         <td colspan='2' class='status' > {$details.perOne} zł </td>

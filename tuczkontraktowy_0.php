@@ -1574,11 +1574,11 @@ class tuczkontraktowy extends Module {
             if($pasza['weightcarfull'] == 0  || $pasza['weightcarfull'] == "" || $pasza['weightcarempty'] == 0 || $pasza['weightcarempty'] == "" ){
                 $details['karaWagi'] = $details['pelnowartosciowe'] * (-10);
             }
-            $details['sumaPaszy'] += ($pasza['weightcarfull'] - $pasza['weightcarempty']);
-            /*$fvs = Utils_RecordBrowserCommon::get_records("kontrakty_faktury_pozycje" , array("id" => $pasza['fakt_poz']),array(),array());
+           // $details['sumaPaszy'] += ($pasza['weightcarfull'] - $pasza['weightcarempty']);
+            $fvs = Utils_RecordBrowserCommon::get_records("kontrakty_faktury_pozycje" , array("id" => $pasza['fakt_poz']),array(),array());
             foreach($fvs as $fv){
                 $details['sumaPaszy'] += custom::change_spearator($fv['amount'],",",".");
-            }*/
+            }
         }
         $details['suma'] += $details['karaWagi'];
         $details['naSztuke'] += $details['karaWagi'];
@@ -1594,7 +1594,6 @@ class tuczkontraktowy extends Module {
         $details['srZuzyciePaszy'] = $details['sumaPaszy'] /  ( $details['wagaZywaTucznikow'] - $details['wagaWarchlakow']);
         $details['srZuzyciePaszy'] = round( $details['srZuzyciePaszy'],2);
         $srZuzycie =  $details['srZuzyciePaszy'];
-
 
         $details['srWagaTucznika'] =  $details['wagaZywaTucznikow'] / $details['sumaTucznikow'];
         $details['srWagaTucznika'] =   round( $details['srWagaTucznika'],2);
