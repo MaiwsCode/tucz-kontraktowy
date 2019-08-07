@@ -1288,7 +1288,8 @@ class tuczkontraktowy extends Module {
     public function pozycje($record){}
 
     public function faktury_list($record){
-
+        $bold = "<span style='font-size:14px;font-weight:bold;'> ";
+        $boldEnd = "</span>";
         $help = "<ul style='text-align:left;'>";
         $help .= "<li> Zestawienie wszystkich faktur dla tuczu</li></ul>";
         print($help);
@@ -1336,6 +1337,13 @@ class tuczkontraktowy extends Module {
                 }
             }
         }
+        $gb->add_row(
+            '',
+            $bold.number_format($sumPrice,2,',',' ' ). " zł".$boldEnd,
+            '',
+            '',
+            ''
+        );
         $this->display_module( $gb );
 
         $gb = &$this->init_module('Utils/GenericBrowser', null, 'd');
@@ -1377,6 +1385,13 @@ class tuczkontraktowy extends Module {
                 }
             }
         }
+        $gb->add_row(
+            '',
+            $bold.number_format($sumPrice,2,',',' ' ). " zł".$boldEnd,
+            '',
+            '',
+            ''
+        );
         $this->display_module( $gb );
         $gb = &$this->init_module('Utils/GenericBrowser', null, 'ws');
         $gb->set_table_columns(
@@ -1417,6 +1432,13 @@ class tuczkontraktowy extends Module {
                 }
             }
         }
+        $gb->add_row(
+            '',
+            $bold.number_format($sumPrice,2,',',' ' ). " zł".$boldEnd,
+            '',
+            '',
+            ''
+        );
         $this->display_module( $gb );
 
         $gb = &$this->init_module('Utils/GenericBrowser', null, 'e');
@@ -1458,6 +1480,13 @@ class tuczkontraktowy extends Module {
                 }
             }
         }
+        $gb->add_row(
+            '',
+            $bold.number_format($sumPrice,2,',',' ' ). " zł".$boldEnd,
+            '',
+            '',
+            ''
+        );
         $this->display_module( $gb );
         /*$bold = "<span style='font-size:14px;font-weight:bold;'> ";
         $boldEnd = "</span>";
@@ -1740,6 +1769,7 @@ class tuczkontraktowy extends Module {
                 $premia = $avg * -6.0;
             }
             $details['nfPrice'] = $details['pelnowartosciowe'] * $premia;
+            $details['naSztuke'] += $details['nfPrice'];
             $details['suma'] += $details['nfPrice'];
         }
         $details['nfPrice'] = number_format($details['nfPrice'], 2,',',' ');
@@ -1769,10 +1799,39 @@ class tuczkontraktowy extends Module {
         custom::create_new_faktura();
         custom::set_header("TUCZ - ".$record['name_number']);
         Base_ThemeCommon::install_default_theme($this->get_type());
+        Base_ActionBarCommon::add(
+            'pdf',
+            'Pobierz PDF', 
+            $this->create_href(array("download" => "pdf")),
+                null,
+                5
+        );
 
         $theme = $this->init_module('Base/Theme');
+
         
-        $theme->assign("details", $this->raportRolnikData($record));
+        $theme->assign("details", $this->raportRolnikData($record));      
+        if($_REQUEST['download'] == "pdf"){
+            $pdf = $this->init_module(Libs_TCPDF::module_name(), 'P');
+            $pdf->clean_up_old_pdfs();
+            $company = CRM_ContactsCommon::get_company($record['farmer']);
+            $name = $company['company_name'];
+            $name= preg_replace('/TN/', '', $name);
+            $name= preg_replace('/[0-9]/', '', $name);
+            $pdf->set_title($name);
+            $pdf->set_subject("Rozliczenie wstaweinia z dnia ".$record['data_start']);
+			$pdf->prepare_header();
+            $pdf->AddPage();
+            ob_start();
+            $theme->display('raport_rolnik_pdf');
+            $table = ob_get_clean();
+
+            $pdf->writeHTML($table);
+            Base_ActionBarCommon::add('save',__('Download PDF'),'target="_blank" href="'.$pdf->get_href('pdf').'"');
+ 
+         }
+
+
         $theme->display('raport_rolnik');
     }
 
@@ -1802,7 +1861,7 @@ class tuczkontraktowy extends Module {
         $details['transportedTucznik'] = 0;
         $details['transportedTucznikPrice'] = 0;
         $details['kosztyInne'];
-
+        $details['suma']  = 0;
         foreach($dostawy as $dostawa){
             $details['sumaWarchlakow'] += $dostawa['amount'];
             $fvs = Utils_RecordBrowserCommon::get_records("kontrakty_faktury_pozycje" , array("id" => $dostawa['fakt_poz']),array(),array());
@@ -1841,15 +1900,15 @@ class tuczkontraktowy extends Module {
         $details['pelnowartosciowe'] = $details['tucznikAmount'] - $details['konfiskaty'] - $details['iloscPadlych'];
         $details['zyskRolnik'] = 0;
         $rolnikRaport = $this->raportRolnikData($record);
-        if($rolnikRaport['nf']){
-            $details['nf'] = $rolnikRaport['nf'];
-            $details['nfPrice'] = $rolnikRaport['nfPrice'];
+        if($rolnikRaport['nf'] == false){
+            $details['suma']  -= $details['paszaPrice'];
+            $details['nf'] = false;
         }
-
+        $details['paszaPrice'] = number_format($details['paszaPrice'], 2,',',' ');
         $details['zyskRolnik'] = $rolnikRaport['suma'];
         $details['zyskRolnik'] = custom::change_spearator( $details['zyskRolnik'],",",".");
         $details['zyskRolnik'] = custom::change_spearator( $details['zyskRolnik']," ","");
-        $details['suma'] = ($details['kosztyWarchlaka'] * (-1)) - $details['kosztyInne'];
+        $details['suma'] += ($details['kosztyWarchlaka'] * (-1)) - $details['kosztyInne'];
         $details['suma']   -= $details['transportedPrice'];
         $details['suma']  -= $details['zyskRolnik'];
         $details['suma']  += $details['tucznikPrice'];

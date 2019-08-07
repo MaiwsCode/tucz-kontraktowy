@@ -12,20 +12,24 @@
     </tr>    
     <tr>
         <td>  Koszty inne </td>
-        <td colspan='2' > - {$details.kosztyInne} </td>
+        <td colspan='2' > -{$details.kosztyInne} </td>
     </tr>
     <tr>
         <td>  Zysk rolnik </td>
         <td colspan='2' > -{$details.zyskRolnik} zł </td>
     </tr>
+    {if $details.nf == false}
+    <tr>
+        <td> Pasza  </td>
+        <td colspan='2'> -{$details.paszaPrice} </td>
+    </tr>
+    {/if}
     <tr>
         <td>  Sprzedaz tucznika </td>
-        <td colspan='2'  > {$details.tucznikPrice} </td>
+        <td  > {$details.tucznikPrice} </td>
+        <td> Cena WBC: {$details.tucznikWBC} zł/kg </td>
     </tr>
-        <tr>
-        <td>  Cena WBC </td>
-        <td colspan='2'  > {$details.tucznikWBC} zł/kg </td>
-    </tr>
+
     <tr>
         <td> Na sztukę  </td>
         <td colspan='2' class='status' > {$details.perOne} zł </td>
