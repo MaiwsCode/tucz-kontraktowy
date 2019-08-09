@@ -1814,12 +1814,15 @@ class tuczkontraktowy extends Module {
         if($_REQUEST['download'] == "pdf"){
             $pdf = $this->init_module(Libs_TCPDF::module_name(), 'P');
             $pdf->clean_up_old_pdfs();
+            $spaces ="                ";
             $company = CRM_ContactsCommon::get_company($record['farmer']);
             $name = $company['company_name'];
             $name= preg_replace('/TN/', '', $name);
             $name= preg_replace('/[0-9]/', '', $name);
+            $name= preg_replace('/NF/', '', $name);
+            $pdf->upload_logo("modules/tuczkontraktowy/theme/logoATH.png","modules/tuczkontraktowy/theme/logoATH.png","");
             $pdf->set_title($name);
-            $pdf->set_subject("Rozliczenie wstaweinia z dnia ".$record['data_start']);
+            $pdf->set_subject("Rozliczenie wstawienia z dnia ".$record['data_start']);
 			$pdf->prepare_header();
             $pdf->AddPage();
             ob_start();
