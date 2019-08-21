@@ -1,5 +1,5 @@
 <h1> Raport dla szefowej </h1>
-
+{$my_form_open}
 <table class="ttable ttable-hover ttable-bordered" style="margin-top:15px;margin-bottom:15px;user-select: text;width:60%;">
    
     <tr>
@@ -36,7 +36,11 @@
     </tr>
 
     <tr>
-
+        <td> Inne {$my_form_data.szefowa_value_discount.html} zł</td>
+        <td> Notatka {$my_form_data.szefowa_notatka.html}</td>
+        <td> {$my_form_data.save.html}</td>
+    </tr>
+    <tr>
         <td> <h2> Suma </h2>  </td>
         {if $details.suma[0] == "-"}
             <td colspan='2' > <h2> <span style='color:red;'> {$details.suma} zł </span> </h2></td>
@@ -46,5 +50,5 @@
     </tr>
    
 </table>
-<table class="ttable ttable-hover ttable-bordered" style="margin-top:15px;margin-bottom:15px;user-select: text;width:60%;">
+{$my_form_close}
 

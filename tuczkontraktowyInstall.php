@@ -36,8 +36,63 @@ class tuczkontraktowyInstall extends ModuleInstall {
         Utils_CommonDataCommon::new_array("Kontrakty/sr_zuzycie/3", array('starter' => '2,1' , 'grower' => '2,61', 'finisher' => '3,62'));
 
         Utils_CommonDataCommon::new_array("Kontrakty/limity_tuczu_na_paszy", array('starter_grower' => '45' , 'grower_finisher' => '80'));
-
         Utils_CommonDataCommon::new_array("Kontrakty/inne", array('Wet' => 'Weterynarz'));
+
+        Utils_CommonDataCommon::new_array("Kontrakty/zaliczki/statusy", array('0' => 'Nierozliczony' , '1' => 'Rozliczony'));
+
+        Utils_RecordBrowserCommon::new_addon('company', "tuczkontraktowy", 'loans',
+            array('tuczkontraktowyCommon', 'loansLabel'));
+         
+        $fields = array(
+            array('name' => _M('company'), 'type'=>'crm_company', 'param'=>array('field_type'=>'select',
+                     'crits'=>array(), 'format'=>array('CRM_ContactsCommon','contact_format_no_company')),
+                     'QFfield_callback'=>array('tuczkontraktowyCommon', 'QFfield_company'), 
+                     'required'=>true, 'extra'=>false, 'visible'=>true, 'filter'=>true),
+            array('name' => _M('tucz'), 'type'=>'select','param'=>"kontrakty::name_number",
+                     'QFfield_callback'=>array('tuczkontraktowyCommon', 'QFfield_tucz')),
+            array('name' => _M('note'),     'type'=>'text',  'param'=>256, 'required'=>false,  'extra'=>false, 'visible'=>true),
+            array('name' => _M('value'),    'type'=>'currency', 'required'=>true, 'extra'=>false, 'visible'=>true),
+            array('name' => _M('payment_deadline'), 'type'=>'date', 'required'=>true, 'extra'=>false, 'visible'=>true),
+            array('name' => _M('status'),   'type'=>'commondata',  'param'=>array('Kontrakty/zaliczki/statusy'),
+            'QFfield_callback'=>array('tuczkontraktowyCommon', 'QFfield_status'), 'required'=>true, 'extra'=>false, 'visible'=>true),
+            array('name' => _M('comments'), 'type'=>'text',  'param'=>128, 'required'=>false, 'extra'=>false, 'visible'=>true),
+        );
+        Utils_RecordBrowserCommon::install_new_recordset('loans', $fields);
+        
+        Utils_RecordBrowserCommon::add_access('loans', 'view', 'ACCESS:employee');
+        Utils_RecordBrowserCommon::add_access('loans','edit', 'ACCESS:employee');
+        Utils_RecordBrowserCommon::add_access('loans','delete', 'ADMIN');
+        Utils_RecordBrowserCommon::add_access('loans','add', 'ACCESS:employee');
+         
+        $fields = array(
+            array('name' => _M('tucz'), 'type'=>'select','param'=>"kontrakty::name_number",
+                     'QFfield_callback'=>array('tuczkontraktowyCommon', 'QFfield_autoTucz')),
+            array('name' => _M('note'),     'type'=>'text',  'param'=>256, 'required'=>false,  'extra'=>false, 'visible'=>true),
+            array('name' => _M('value'),    'type'=>'currency', 'required'=>true, 'extra'=>false, 'visible'=>true),
+            array('name' => _M('payment_date'), 'type'=>'date', 'required'=>true, 'extra'=>false, 'visible'=>true),
+            array('name' => _M('status'),   'type'=>'commondata',  'param'=>array('Kontrakty/zaliczki/statusy'),
+            'QFfield_callback'=>array('tuczkontraktowyCommon', 'QFfield_status'), 'required'=>true, 'extra'=>false, 'visible'=>true),
+            array('name' => _M('comments'), 'type'=>'text',  'param'=>128, 'required'=>false, 'extra'=>false, 'visible'=>true),
+            );
+        Utils_RecordBrowserCommon::install_new_recordset('kontrakty_advances', $fields);
+        
+        Utils_RecordBrowserCommon::add_access('kontrakty_advances', 'view', 'ACCESS:employee');
+        Utils_RecordBrowserCommon::add_access('kontrakty_advances','edit', 'ACCESS:employee');
+        Utils_RecordBrowserCommon::add_access('kontrakty_advances','delete', 'ADMIN');
+        Utils_RecordBrowserCommon::add_access('kontrakty_advances','add', 'ACCESS:employee');
+        
+
+        $fields = array(
+            array('name' => _M('tucz'), 'type'=>'integer'),
+            array('name' => _M('pig_weight'),     'type'=>'text',  'param'=>64, 'required'=>false,  'extra'=>false, 'visible'=>true),
+        );
+            
+        Utils_RecordBrowserCommon::install_new_recordset('kontrakty_extra_data', $fields);
+
+        Utils_RecordBrowserCommon::add_access('kontrakty_extra_data', 'view', 'ACCESS:employee');
+        Utils_RecordBrowserCommon::add_access('kontrakty_extra_data','edit', 'ACCESS:employee');
+        Utils_RecordBrowserCommon::add_access('kontrakty_extra_data','delete', 'ADMIN');
+        Utils_RecordBrowserCommon::add_access('kontrakty_extra_data','add', 'ACCESS:employee');
 
         Utils_CommonDataCommon::new_array("Faktury/fv_sub_type", array('T' => 'Tucznik' , 'TR' => "Transport",
         'W' => 'Warchlak', 'O' => 'Owca', 'P'=> 'Pasza', 'OTH'=> "Tucze - koszty inne"));
@@ -96,6 +151,10 @@ class tuczkontraktowyInstall extends ModuleInstall {
         Utils_RecordBrowserCommon::new_addon('kontrakty', $this->get_type(), 'raport_szefowa',
             array($this->get_type() . 'Common', 'szefowaLabel'));
 
+        //zaliczki
+        Utils_RecordBrowserCommon::new_addon('kontrakty', "tuczkontraktowy", 'advances',
+            array('tuczkontraktowyCommon', 'advancesLabel'));
+
         //raport faktury
         Utils_RecordBrowserCommon::new_addon('kontrakty', $this->get_type(), 'faktury_list',
             array($this->get_type() . 'Common', 'fakturyLabel'));
@@ -138,6 +197,10 @@ class tuczkontraktowyInstall extends ModuleInstall {
         //widok przewazenia
         Utils_RecordBrowserCommon::register_processing_callback('kontrakty_wazenie', 
                             array($this->get_type () . 'Common', 'view_wazenie'));
+
+        //zaliczki                    
+        Utils_RecordBrowserCommon::new_addon('company', "tuczkontraktowy", 'advances',
+                        array('tuczkontraktowyCommon', 'advancesLabel')); 
 
         //kontrakty zalozenia                    
         Utils_RecordBrowserCommon::register_processing_callback('kontrakty_zalozenia', 
@@ -280,7 +343,9 @@ class tuczkontraktowyInstall extends ModuleInstall {
         $success = $table->uninstall();
         $table = new tuczkontraktowy_inne();
         $success = $table->uninstall();
-
+        Utils_RecordBrowserCommon::uninstall_recordset('kontrakty_advances');
+        Utils_RecordBrowserCommon::uninstall_recordset('loans');
+        Utils_RecordBrowserCommon::uninstall_recordset('kontrakty_extra_data');
         $ret = true;
         return $ret; 
     }

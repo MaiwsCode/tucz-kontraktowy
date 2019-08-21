@@ -8,6 +8,15 @@ use Silverslice\DocxTemplate\Template;
  */
 class tuczkontraktowy extends Module { 
 
+    public function isClosed($record){
+        if($record['status'] == "Done"){
+            return true;
+        }
+        else{
+            return false;
+        }
+    }
+
     public function tucze_list($record){
         Base_ThemeCommon::install_default_theme($this->get_type());
 		Base_LangCommon::install_translations($this->get_type());
@@ -15,8 +24,10 @@ class tuczkontraktowy extends Module {
         print($help);
         $_SESSION['tucz_id'] = $record['id'];
         custom::set_header("TUCZ - ".$record['name_number']);
-        custom::create_new_faktura();
-        custom::addButton("kontrakty_faktury_pozycje","Dodaj dostawę warchlaka","W");
+        if(!$this->isClosed($record)){
+            custom::create_new_faktura();
+            custom::addButton("kontrakty_faktury_pozycje","Dodaj dostawę warchlaka","W");
+        }
         $_SESSION['jedn'] = "j0";
         $_SESSION['display_current_name_view'] = "Dostawa";
         $rbo = new RBO_RecordsetAccessor("kontrakty_faktury_dostawa_warchlaka");
@@ -46,11 +57,14 @@ class tuczkontraktowy extends Module {
 				if($p['weight_on_drop']){
 					$we = $p['weight_on_drop'];
 					$ub = ($r['amount'] - $p['weight_on_drop'] ) / $p['amount'];
-				}
-			    $link = $info->get_record($p['fakt_poz'])->create_default_linked_label(false,  false);
-
-                $link = $info->get_record($p['fakt_poz'])->record_link(($r->description ?: "Brakuje opisu" )." ",false);
-
+                }
+                if($this->isClosed($record)){
+			        $link = "Warchlaki";
+                }else{
+                    $link = $info->get_record($p['fakt_poz'])->create_default_linked_label(false,  false);
+                    $link = $info->get_record($p['fakt_poz'])->record_link(($r->description ?: "Brakuje opisu" )." ",false);
+                }
+                $ub = round($ub,4);
                 if($ub < 0){
                     $ub = "+ ".$ub;
                 }else{
@@ -82,6 +96,29 @@ class tuczkontraktowy extends Module {
         );
 
         $this->display_module( $gb );
+
+        $rboValues = new RBO_RecordsetAccessor("kontrakty_extra_data");
+        $values = $rboValues->get_records(array("tucz"=>$record['id']),array(),array());
+        $value = "";
+        $recID = 0;
+        foreach($values as $v){
+            $value = $v['pig_weight'];
+            $recID = $v['id'];
+        }
+
+        $form = $this->init_module('Libs/QuickForm');
+        $form->addElement("text","pig_weight", "Waga warchlaków", array("value" => $value));
+        $form->addElement('submit', 'submit', 'Dodaj/Edytuj');
+        $form->display_as_column();
+
+        if($form->validate()){
+            $valuesForm = $form->exportValues();
+            if($recID != 0){
+                Utils_RecordBrowserCommon::update_record("kontrakty_extra_data", $recID, array('pig_weight' => $valuesForm['pig_weight']) , false);
+            }else{
+               $rboValues->new_record(array("tucz" => $record['id'], 'pig_weight' => $valuesForm['pig_weight']));
+            }
+        }
     }
 
     public function tuczeTabView($record){
@@ -191,10 +228,19 @@ class tuczkontraktowy extends Module {
         $help .= "<li> W tym miejscu dodajemy dostawe pasz</li></ul>";
         print($help);
         custom::set_header("TUCZ - ".$record['name_number']);
-        custom::create_new_faktura();
-
-        //$_SESSION['display_current_name_view'] = "Limity";
-        custom::addButton("kontrakty_limity","Dodaj limity paszy","");
+        if(!$this->isClosed($record)){
+            custom::create_new_faktura();
+            custom::addButton("kontrakty_faktury_pozycje","Dodaj dostawę paszy","P");
+            //$_SESSION['display_current_name_view'] = "Limity";
+            custom::addButton("kontrakty_limity","Dodaj limity paszy","");
+            Base_ActionBarCommon::add(
+                'save',
+                "Ustaw limity z założeń",
+                $this->create_href ( array ('limits' => 'true')),
+                null,
+                4
+            );
+        }
 
         $downladHref = 'href="modules/tuczkontraktowy/word.php?'.http_build_query(array('recordID'=> $record['id'] , 'cid'=>CID)).'"';
         print('<a class="epesi_big_button" '.$this->create_callback_href(array($this,'limits_list'),array($record)).'>Wyświetl limity pasz</a><br><br>');
@@ -206,13 +252,7 @@ class tuczkontraktowy extends Module {
             null,
             4
         );
-        Base_ActionBarCommon::add(
-            'save',
-            "Ustaw limity z założeń",
-            $this->create_href ( array ('limits' => 'true')),
-            null,
-            4
-        );
+
         $exist_types = [];
         $exist_amount = [];
         $price_avg = [];
@@ -220,7 +260,6 @@ class tuczkontraktowy extends Module {
         $cena = [];
         $waga = [];
         $price_avg_weight = [];
-        custom::addButton("kontrakty_faktury_pozycje","Dodaj dostawę paszy","P");
         $_SESSION['jedn'] = "j0";
         $_SESSION['display_current_name_view'] = "Pasze";
         $rbo = new RBO_RecordsetAccessor("kontrakty_faktury_dostawa_paszy");
@@ -257,7 +296,11 @@ class tuczkontraktowy extends Module {
             $fvRbo = new RBO_RecordsetAccessor("kontrakty_faktury");
             $data = $fvRbo->get_record($extra['faktura']);
             $date = $data['date'];
-            $customPasze[$p['id']]['record'] = $info->get_record($p['fakt_poz'])->create_default_linked_label(false,  false)." - ".$p['feed_type'];
+            if(!$this->isClosed($record)){
+                $customPasze[$p['id']]['record'] = $info->get_record($p['fakt_poz'])->create_default_linked_label(false,  false)." - ".$p['feed_type'];
+            }else{
+                $customPasze[$p['id']]['record'] = "Pasza - ".$p['feed_type'];
+            }
             $customPasze[$p['id']]['amount'] = $extra['amount'];
             $customPasze[$p['id']]['price'] = number_format($price,2,","," ");;
             $customPasze[$p['id']]['date'] = $date;
@@ -351,11 +394,12 @@ class tuczkontraktowy extends Module {
         $help .= "<li> W tym miejscu dodajemy koszty za transport</li></ul>";
         print($help);
         custom::set_header("TUCZ - ".$record['name_number']);
-        custom::create_new_faktura();
-        $_SESSION['display_current_name_view'] = "Transporty";
-        custom::addButton("kontrakty_faktury_pozycje","Dodaj transport","TR");
-        $_SESSION['adding_type'] = 'transport';
-
+        if(!$this->isClosed($record)){
+            custom::create_new_faktura();
+            $_SESSION['display_current_name_view'] = "Transporty";
+            custom::addButton("kontrakty_faktury_pozycje","Dodaj transport","TR");
+            $_SESSION['adding_type'] = 'transport';
+        }
         $rbo = new RBO_RecordsetAccessor("kontrakty_faktury_transporty");
         $info = new RBO_RecordsetAccessor("kontrakty_faktury_pozycje");
         $trans = $rbo->get_records(array('id_tuczu' => $record['id']),array(),array());
@@ -372,8 +416,12 @@ class tuczkontraktowy extends Module {
         $price = 0;
         foreach($trans as $p){
             $r = $info->get_record($p['fakt_poz']);
-            $link = $info->get_record($p['fakt_poz'])->create_default_linked_label(false,  false);
-            $link = $info->get_record($p['fakt_poz'])->record_link(($r->description ?: "Brakuje opisu" )." ",false);
+            if(!$this->isClosed($record)){
+                $link = $info->get_record($p['fakt_poz'])->create_default_linked_label(false,  false);
+                $link = $info->get_record($p['fakt_poz'])->record_link(($r->description ?: "Brakuje opisu" )." ",false);
+            }else{
+                $link = $r->description ?: "Brakuje opisu" ;
+            }
 
             $reciver = new RBO_RecordsetAccessor('company');
             $rec = $reciver->get_record($p['company']);
@@ -406,12 +454,12 @@ class tuczkontraktowy extends Module {
         $help .= "<li> W tym miejscu dodajemy odbiór tuczników</li></ul>";
         print($help);
         custom::set_header("TUCZ - ".$record['name_number']);
-        custom::create_new_faktura();
-
-        $_SESSION['display_current_name_view'] = "Odbiory";
-        custom::addButton("kontrakty_faktury_pozycje","Dodaj odbiór tucznika","T");
-        $_SESSION['jedn'] = "j0";
-
+        if(!$this->isClosed($record)){
+            custom::create_new_faktura();
+            $_SESSION['display_current_name_view'] = "Odbiory";
+            custom::addButton("kontrakty_faktury_pozycje","Dodaj odbiór tucznika","T");
+            $_SESSION['jedn'] = "j0";
+        }
 
         //tuczniki
         $rbo = new RBO_RecordsetAccessor("kontrakty_faktury_odbior_tucznika");
@@ -445,12 +493,13 @@ class tuczkontraktowy extends Module {
         $sum_weight_on_fakt = 0;
         $gb->set_table_columns(
             array(
-                array('name'=>'Odbiory', 'width'=>100/6),
-                array('name'=>'Data odbioru', 'width'=>100/6),
-                array('name'=>'Ilość sztuk', 'width'=>100/6),
-                array('name'=>'Waga żywa brutto', 'width'=>100/6),
-                array("name" => "WBC" , "width" => 100/6),
-                array('name'=>'Mięsność', 'width'=>100/6),
+                array('name'=>'Odbiory', 'width'=>100/7),
+                array('name'=>'Data odbioru', 'width'=>100/7),
+                array('name'=>'Ilość sztuk', 'width'=>100/7),
+                array('name'=>'Waga żywa brutto', 'width'=>100/7),
+                array("name" => "WBC" , "width" => 100/7),
+                array('name'=>'Mięsność', 'width'=>100/7),
+                array('name'=>'Konfiskaty', 'width'=>100/7),
             )
         );
         $bold = "<span style='font-size:14px;font-weight:bold;'> ";
@@ -458,17 +507,28 @@ class tuczkontraktowy extends Module {
         $miesnosc = 0;
         $sumAmount = 0;
         $sumWeight = 0;
+        $konfiskaty = 0;
         foreach($odbior as $p){
             $extra = $info->get_record($p['fakt_poz']);
             $sum_weight_on_fakt += $extra['amount'];
             $recived += $p['amount'];
+            $konfiskaty += $p['konfiskaty'];
             $sum_alive_brutto += $p['weight_alive_brutto'];
-            $gb->add_row( $info->get_record($p['fakt_poz'])->create_default_linked_label(false,  false),
+            $label = "";
+            if(!$this->isClosed($record)){
+                $label = $info->get_record($p['fakt_poz'])->create_default_linked_label(false,  false);
+            }else{
+                $label = $extra['description'] ?: "Brakuje opisu" ;
+            }
+
+            $gb->add_row( 
+                    $label,
                     $p->get_val("date_recived"),
                     $p['amount']." szt.",
                     $p['weight_alive_brutto']." kg",
                     $extra['amount']." kg",
-                    $p['meatiness']."%"
+                    $p['meatiness']."%",
+                    $p['konfiskaty']. " szt"
                 );
             $sumWeight +=  $p['weight_alive_brutto'];
             $sumAmount += $p['amount'];
@@ -480,7 +540,8 @@ class tuczkontraktowy extends Module {
                             $bold.$sumAmount." szt.".$boldEnd,
                             $bold.$sumWeight." kg".$boldEnd,
                             '',
-                            ''
+                            '',
+                            $konfiskaty." szt"
         );
         $miesnosc = $miesnosc / count($odbior);
         $miesnosc = round($miesnosc,2);
@@ -507,11 +568,12 @@ class tuczkontraktowy extends Module {
         $help .= "<li> W tym miejscu dodajemy inne faktury jak np. Weterynarz </li></ul>";
         print($help);
         custom::set_header("TUCZ - ".$record['name_number']);
-        custom::create_new_faktura();
-        $_SESSION['display_current_name_view'] = "Inne faktury";
-        custom::addButton("kontrakty_faktury_pozycje","Dodaj szczegóły","OTH");
-      //  $_SESSION['adding_type'] = 'inne';
-
+        if(!$this->isClosed($record)){
+            custom::create_new_faktura();
+            $_SESSION['display_current_name_view'] = "Inne faktury";
+            custom::addButton("kontrakty_faktury_pozycje","Dodaj szczegóły","OTH");
+            //$_SESSION['adding_type'] = 'inne';
+        }
         $rbo = new RBO_RecordsetAccessor("kontrakty_inne");
         $info = new RBO_RecordsetAccessor("kontrakty_faktury_pozycje");
         $inne = $rbo->get_records(array('id_tuczu' => $record['id']),array(),array("other_type"=>"DESC"));
@@ -537,7 +599,15 @@ class tuczkontraktowy extends Module {
             $types[$p['other_type']]['price'] += (floatval(str_replace(",",".",substr($extra['price'], 0, -3))));
             $desc = "";
             if($p->description){$desc = $p->description;} else{ $desc =  "Brakuje opisu";};
-            $gb->add_row( $info->get_record($p['fakt_poz'])->record_link($extra->description ?: "Brakuje opisu",  false),
+            $label = "";
+            if(!$this->isClosed($record)){
+                $label = $info->get_record($p['fakt_poz'])->record_link($extra->description ?: "Brakuje opisu",  false);
+            }else{
+               $label = $extra->description ?: "Brakuje opisu";
+            }
+
+            $gb->add_row( 
+                $label,
                 $p->get_val('other_type'),
                 number_format($extra->price / $extra->amount,2,","," ")." zł" ,
                 $extra['amount']
@@ -672,10 +742,12 @@ class tuczkontraktowy extends Module {
             unset($_SESSION['wazenie']);
             unset($_SESSION['action']);
         }
-
-        custom::create_new_faktura();
         custom::set_header("TUCZ - ".$record['name_number']);
-            $rbo = new RBO_RecordsetAccessor("kontrakty_wazenie");
+        if(!$this->isClosed($record)){
+            custom::create_new_faktura();
+        }
+
+        $rbo = new RBO_RecordsetAccessor("kontrakty_wazenie");
         $daty =  DB::GetAll("SELECT DISTINCT f_date_weight FROM kontrakty_wazenie_data_1 WHERE (f_id_tuczu = " .$record['id']. " AND active = 1)  ORDER BY f_date_weight");
             $gb = &$this->init_module('Utils/GenericBrowser', null, 'Ważenie');
             $gb->set_table_columns(
@@ -955,13 +1027,33 @@ class tuczkontraktowy extends Module {
        ');
         
     }
+    //pozyczki -> FIRMA
+    public function loans($record){
+        $_SESSION['advances'] = $record['id'];
+
+        $rb = $this->init_module(Utils_RecordBrowser::module_name(),'loans','addon');
+
+		$this->display_module($rb, array(array('company'=> $record['id']), array(), array("payment_deadline" => "DESC")), 'show_data'); 
+    }
+
+    //zaliczki -> TUCZE
+    public function advances($record){
+        $_SESSION['advances'] = $record['id'];
+        $rb = $this->init_module(Utils_RecordBrowser::module_name(),'kontrakty_advances','addon');
+
+		$this->display_module($rb, array(array('tucz'=> $record['id']), array(), array("payment_date" => "DESC")), 'show_data'); 
+    }
+
+
 
     public function plan($record){
-        $form = & $this->init_module('Libs/QuickForm');
+        $form = & $this->init_module('Libs/QuickForm'); 
         $help = "<ul style='text-align:left;'>";
         $help .= "<li> Aby ustawić wartości domyślne dla pól należy wprowadzić wartości klikając u góry przycisk 'Edycja założeń' </li></ul>";
         print($help);
-        custom::create_new_faktura();
+        if(!$this->isClosed($record)){
+            custom::create_new_faktura();
+        }
         custom::set_header("TUCZ - ".$record['name_number']);
        // Base_ThemeCommon::install_default_theme($this->get_type());
         $amount = 0;
@@ -982,22 +1074,24 @@ class tuczkontraktowy extends Module {
         }else{
             $zal = "None";
         }
-        if($_id != "none"){
-            Base_ActionBarCommon::add(
-                'add',
-                __('Edycja założeń'),
-                Utils_RecordBrowserCommon::create_record_href('kontrakty_zalozenia',$id=$_id,'edit'),
-                null,
-                $x
-            );
-        }else{
-            Base_ActionBarCommon::add(
-                'add',
-                __('Edycja założeń'),
-                Utils_RecordBrowserCommon::create_new_record_href('kontrakty_zalozenia',$def = array(), $id='none'),
-                null,
-                $x
-            );
+        if(!$this->isClosed($record)){
+            if($_id != "none"){
+                Base_ActionBarCommon::add(
+                    'add',
+                    __('Edycja założeń'),
+                    Utils_RecordBrowserCommon::create_record_href('kontrakty_zalozenia',$id=$_id,'edit'),
+                    null,
+                    $x
+                );
+            }else{
+                Base_ActionBarCommon::add(
+                    'add',
+                    __('Edycja założeń'),
+                    Utils_RecordBrowserCommon::create_new_record_href('kontrakty_zalozenia',$def = array(), $id='none'),
+                    null,
+                    $x
+                );
+            }
         }
         $theme = $this->init_module('Base/Theme');
 		$limits = Utils_CommonDataCommon::get_array("Kontrakty/limity_tuczu_na_paszy"); 
@@ -1076,8 +1170,9 @@ class tuczkontraktowy extends Module {
         $form->addElement('text','farmer','',array('class' => "input_value",
                                                    'id'=> 'farmer' ,
                                                    'value' => $zal['farmer'] ?: '10,0' ));
-
-        $form->addElement('submit', 'save', 'Zapisz zmiany założeń', array('class' => 'epesi_big_button' , 'style' => "position:fixed;left:0;bottom:35%;") );
+        if(!$this->isClosed($record)){
+            $form->addElement('submit', 'save', 'Zapisz zmiany założeń', array('class' => 'epesi_big_button' , 'style' => "position:fixed;left:0;bottom:35%;") );
+        }
         $form->toHtml();
 
         $form->assign_theme('my_form', $theme);
@@ -1204,10 +1299,13 @@ class tuczkontraktowy extends Module {
         $help = "<ul style='text-align:left;'>";
         $help .= "<li> W tym miejscu dodajemy limity pasz</li></ul>";
         //print($help);
-        custom::create_new_faktura();
+        if(!$this->isClosed($record)){
+            custom::create_new_faktura();
+            custom::addButton("kontrakty_limity","Dodaj limity paszy","");    
+        }
         custom::set_header("TUCZ - ".$record['name_number']);
         $_SESSION['display_current_name_view'] = "Limity";
-        custom::addButton("kontrakty_limity","Dodaj limity paszy","");
+
         $rbo = new RBO_RecordsetAccessor("kontrakty_limity");
         $limity = $rbo->get_records(array('id_tuczu' => $record['id']),array(),array('date_fall' => "ASC"));
         $gb = &$this->init_module('Utils/GenericBrowser', null, 'Upadki');
@@ -1235,11 +1333,14 @@ class tuczkontraktowy extends Module {
     public function upadki_list($record){
         $help = "<ul style='text-align:left;'>";
         $help .= "<li> W tym miejscu dodajemy upadki podczas tuczu</li></ul>";
-        print($help);
-        custom::create_new_faktura();
         custom::set_header("TUCZ - ".$record['name_number']);
-        $_SESSION['display_current_name_view'] = "Upadki";
-        custom::addButton("kontrakty_upadki","Dodaj upadek","");
+        print($help);
+        if(!$this->isClosed($record)){
+            custom::create_new_faktura();
+        
+            $_SESSION['display_current_name_view'] = "Upadki";
+            custom::addButton("kontrakty_upadki","Dodaj upadek","");
+        }
         $rbo = new RBO_RecordsetAccessor("kontrakty_upadki");
         $inne = $rbo->get_records(array('id_tuczu' => $record['id']),array(),array('date_fall' => "ASC"));
         $gb = &$this->init_module('Utils/GenericBrowser', null, 'Upadki');
@@ -1257,9 +1358,14 @@ class tuczkontraktowy extends Module {
         $sumDown = 0;
         $sumKg = 0;
         foreach($inne as $p){
-            $btns = $p->record_link($edit_btn,false,'edit');
-            $del = "<a " . $this->create_confirm_callback_href("Na pewno usunąć?",
-            array($this, "upadekDelete"), array($p->id)) . ">" . $del_btn . "</a>";
+            if(!$this->isClosed($record)){
+                $btns = $p->record_link($edit_btn,false,'edit');
+                $del = "<a " . $this->create_confirm_callback_href("Na pewno usunąć?",
+                                    array($this, "upadekDelete"), array($p->id)) . ">" . $del_btn . "</a>";
+            }else{
+                $btns = "";
+                $del = "";
+            }
             $btns .= $del;
             $gb->add_row(   $btns,
                             $p->get_val('date_fall'),
@@ -1294,7 +1400,9 @@ class tuczkontraktowy extends Module {
         $help .= "<li> Zestawienie wszystkich faktur dla tuczu</li></ul>";
         print($help);
         custom::set_header("TUCZ - ".$record['name_number']);
-        custom::create_new_faktura();
+        if(!$this->isClosed($record)){
+            custom::create_new_faktura();
+        }
 
         $gb = &$this->init_module('Utils/GenericBrowser', null, 'Pasze');
         $gb->set_table_columns(
@@ -1559,6 +1667,22 @@ class tuczkontraktowy extends Module {
         $details['iloscPadlych'] = 0;
         $details['naSztuke'] = 0;
         $details['zakladanaIlosc'] = $zalozenia['planned_amount'];
+        $rboAdvances = new RBO_RecordsetAccessor("kontrakty_advances");
+        $advances = $rboAdvances->get_records(array("tucz" => $record['id']),array(),array());
+        $rboLoans = new RBO_RecordsetAccessor("loans");
+        $loans = $rboLoans->get_records(array("tucz" => $record['id'], "status" => "1"),array(),array());
+        $advancesSum = 0;
+        $loansSum = 0;
+        foreach($advances as $advance){
+          $advancesSum += substr($advance['value'],0,-3);
+        }
+        foreach($loans as $loan){
+            $loansSum += substr($loan['value'],0,-3);
+        }
+        $details['suma'] -= $loansSum;
+        $details['suma'] -= $advancesSum;
+        $details['loans'] = $loansSum;
+        $details['advances'] = $advancesSum;
         foreach ($upadki as $upadek){
             $details['iloscPadlych'] += $upadek['amount_fall'];
 
@@ -1569,11 +1693,21 @@ class tuczkontraktowy extends Module {
         $cenaPaszy = custom::change_spearator($zalozenia["price_starter"],",",".");
         
         $details['dateStart']  = $record['data_start'];
+
+
         foreach ($dostawy as $dostawa){
             $details['sumaWarchlakow'] += $dostawa['amount'];
             $fvs = Utils_RecordBrowserCommon::get_records("kontrakty_faktury_pozycje" , array("id" => $dostawa['fakt_poz']),array(),array());
             foreach($fvs as $fv){
                 $details['wagaWarchlakow'] += custom::change_spearator($fv['amount'],",",".");
+            }
+        }
+
+        $rboExtraData = new RBO_RecordsetAccessor("kontrakty_extra_data");
+        $extraRecords = $rboExtraData->get_records(array("tucz"=>$record['id']),array(),array());
+        foreach($extraRecords as $extra){
+            if($extra['pig_weight'] != 0 ){
+                $details['wagaWarchlakow'] = custom::change_spearator($extra['pig_weight'],",",".");
             }
         }
 
@@ -1585,16 +1719,16 @@ class tuczkontraktowy extends Module {
             $details['sumaTucznikow'] += $odbior['amount'];
             $details['konfiskaty'] += $odbior['konfiskaty'];
             $details['dateEnd'] += strtotime($odbior['date_recived']);
+            $optymalne += $odbior['premiowane'];
+            $kary += $odbior['suboptimal'];
+            $zlaWaga += $odbior['badweight'];
             $details['wagaZywaTucznikow'] += $odbior['weight_alive_brutto'];
             $fvs = Utils_RecordBrowserCommon::get_records("kontrakty_faktury_pozycje" , array("id" => $odbior['fakt_poz']),array(),array());
             foreach($fvs as $fv){
                 $details['wagaTucznikow'] += custom::change_spearator($fv['amount'],",",".");
-                $optymalne += $odbior['premiowane'];
-                $kary += $odbior['suboptimal'];
-                $zlaWaga += $odbior['badweight'];
             }
         }
-        $details['pelnowartosciowe'] = $details['sumaTucznikow'] - $details['konfiskaty'];
+        $details['pelnowartosciowe'] = $details['zakladanaIlosc'] - $details['konfiskaty'] - $details['iloscPadlych'];
         $details['dateEnd'] = $details['dateEnd'] / count($odbiory);
         $details['dateEnd'] = round($details['dateEnd'],0);
         $details['czasTuczu'] = $this->time2string($details['dateEnd'] -  strtotime($record['data_start']));
@@ -1632,7 +1766,7 @@ class tuczkontraktowy extends Module {
 
         $details['srPrzyrostDobowy'] = ($details['srWagaTucznika'] - $details['srWagaWarchlaka']) / $details['czasTuczu'];
         $details['srPrzyrostDobowy'] = round($details['srPrzyrostDobowy'],2);
-        $details['upadki'] = ($details['iloscPadlych'] + $details['konfiskaty']) / $details['pelnowartosciowe'];
+        $details['upadki'] = ($details['iloscPadlych'] + $details['konfiskaty']) / $details['zakladanaIlosc'];
         $details['upadki'] = $details['upadki'] * 100;
         $details['upadki'] = round($details['upadki'],2);
         $a = $details['upadki'] ;
@@ -1781,6 +1915,8 @@ class tuczkontraktowy extends Module {
         $details['weterynariaCena'] = custom::change_spearator($details['weterynariaCena'],".",",") ;
         $details['naSztuke'] += $details['weterynariaWartosc'];
         $details['sumaperone'] = $details['naSztuke'] / $details['pelnowartosciowe'];
+        $details['advances'] = number_format($details['advances'], 2,',',' ');
+        $details['loans'] = number_format($details['loans'], 2,',',' ');
         $details['sumaperone'] = number_format($details['sumaperone'], 2,',',' ');
         $details['suma'] += $details['weterynariaWartosc'];
         $details['weterynariaWartosc'] = number_format($details['weterynariaWartosc'], 2,',',' ');
@@ -1790,13 +1926,28 @@ class tuczkontraktowy extends Module {
         return $details;
     }
 
+    public function loanView($record){
+        
+    }
+
 
     public function raport_rolnik($record){
+
+        if($_REQUEST['advance']){
+            Utils_RecordBrowserCommon::update_record("kontrakty_advances", $_REQUEST['advance'],
+                 array('status' => '1') , false);
+        }
+        if($_REQUEST['loan']){
+            Utils_RecordBrowserCommon::update_record("loans", $_REQUEST['loan'],
+                 array('status' => '1', 'tucz' => $_REQUEST['tucz']) , false);
+        }
         $help = "<ul style='text-align:left;'>";
         $help .= "<li> W tym miejscu mamy wygenerowany raport dla rolinka. Należy pamiętać ze nie będzie on dobrze wyliczony 
         jeżeli będzie brakowało danych</li></ul>";
-        print($help);
-        custom::create_new_faktura();
+        print($help);      
+        if(!$this->isClosed($record)){
+            custom::create_new_faktura();
+        }
         custom::set_header("TUCZ - ".$record['name_number']);
         Base_ThemeCommon::install_default_theme($this->get_type());
         Base_ActionBarCommon::add(
@@ -1806,24 +1957,40 @@ class tuczkontraktowy extends Module {
                 null,
                 5
         );
-
+        $advancesRbo = new RBO_RecordsetAccessor("kontrakty_advances");
+        $advances = $advancesRbo->get_records(array("tucz" => $record['id'], "status" => "0"),array(),array("payment_date" => "ASC"));
         $theme = $this->init_module('Base/Theme');
+        foreach($advances as $advance){
+            $advance['value'] = $advance->get_val('value');
+            $advance['href'] = $this->create_href(array("advance" => $advance['id'],'tucz' => $record['id']));
+        }
+        $loansRbo = new RBO_RecordsetAccessor("loans");
+        $loans = $loansRbo->get_records(array("company" => $record['farmer'], "status" => "0"),array(),array("payment_date" => "ASC"));
+        foreach($loans as $loan){
+            $loan['value'] = $loan->get_val('value');
+            $loan['href'] = $this->create_href(array("loan" => $loan['id'],'tucz' => $record['id']));
+        }
 
-        
+        $theme->assign("loans", $loans);  
+        $theme->assign("advances", $advances);  
         $theme->assign("details", $this->raportRolnikData($record));      
         if($_REQUEST['download'] == "pdf"){
             $pdf = $this->init_module(Libs_TCPDF::module_name(), 'P');
             $pdf->clean_up_old_pdfs();
-            $spaces ="                ";
+            $spaces =  "                                                                                                                           ";
+            $spaces2 = "                                                                                                                                                    ";
             $company = CRM_ContactsCommon::get_company($record['farmer']);
             $name = $company['company_name'];
             $name= preg_replace('/TN/', '', $name);
             $name= preg_replace('/[0-9]/', '', $name);
             $name= preg_replace('/NF/', '', $name);
             $pdf->upload_logo("modules/tuczkontraktowy/theme/logoATH.png","modules/tuczkontraktowy/theme/logoATH.png","");
-            $pdf->set_title($name);
-            $pdf->set_subject("Rozliczenie wstawienia z dnia ".$record['data_start']);
-			$pdf->prepare_header();
+            $title = $name;
+            $pdf->set_title($title);
+            $subject = "Rozliczenie wstawienia z dnia ".$record['data_start'];
+            $pdf->set_subject($subject);
+            $pdf->prepare_header();
+            $pdf->tcpdf->setHeaderFont(array("dejavusanscondensed",$style="right",$size=16));
             $pdf->AddPage();
             ob_start();
             $theme->display('raport_rolnik_pdf');
@@ -1900,6 +2067,14 @@ class tuczkontraktowy extends Module {
                     $details['kosztyInne'] +=   substr($fv['price'],0,-3);
             }
         }
+        $rboValues = new RBO_RecordsetAccessor("kontrakty_extra_data");
+        $values = $rboValues->get_records(array("tucz"=>$record['id']),array(),array());
+        $value = "";
+        foreach($values as $v){
+            $details['szefowaInne'] = custom::change_spearator( $v['szefowa_value_discount'],",","."); 
+            $details['szefowaInne'] = custom::change_spearator( $v['szefowa_value_discount']," ",""); 
+        }
+
         $details['pelnowartosciowe'] = $details['tucznikAmount'] - $details['konfiskaty'] - $details['iloscPadlych'];
         $details['zyskRolnik'] = 0;
         $rolnikRaport = $this->raportRolnikData($record);
@@ -1916,6 +2091,7 @@ class tuczkontraktowy extends Module {
         $details['suma']  -= $details['zyskRolnik'];
         $details['suma']  += $details['tucznikPrice'];
         $details['perOne'] = $details['suma'] / $details['pelnowartosciowe'];
+        $details['suma'] += $details['szefowaInne'];
         $details['cenaZaWarchlaka'] = $details['kosztyWarchlaka'] / $details['sumaWarchlakow'];
         $details['tucznikWBC'] =  $details['tucznikPrice'] /  $details['tucznikWBC'] ;
         $details['tucznikWBC'] =  number_format($details['tucznikWBC'], 2,',',' ');
@@ -1936,13 +2112,47 @@ class tuczkontraktowy extends Module {
         $help .= "<li> W tym miejscu mamy wygenerowany raport dla szefowej. Należy pamiętać ze nie będzie on dobrze wyliczony 
         jeżeli będzie brakowało danych</li></ul>";
         print($help);
-        custom::create_new_faktura();
-       // Base_ThemeCommon::install_default_theme($this->get_type());
-        $theme = $this->init_module('Base/Theme');
+        if(!$this->isClosed($record)){
+            custom::create_new_faktura();
+        }
 
+       // Base_ThemeCommon::install_default_theme($this->get_type());
+
+       $rboValues = new RBO_RecordsetAccessor("kontrakty_extra_data");
+       $values = $rboValues->get_records(array("tucz"=>$record['id']),array(),array());
+       $value = "";
+       $recID = 0;
+       foreach($values as $v){
+           $recID = $v['id'];
+           $note = $v["szefowa_notatka"];
+           $value = $v["szefowa_value_discount"];
+       }
+
+        $theme = $this->init_module('Base/Theme');
+        
+        $form = $this->init_module('Libs/QuickForm');
+        $form->addElement("text", "szefowa_value_discount", "Inne",array('class' => "input_value" , 'style' => 'width:80%;', 'value' => $value));
+        $form->addElement("text", "szefowa_notatka" , "Notatka", array('class' => "input_value", 'style' => 'width:80%;', 'value' => $note));
+        $form->addElement("submit","save", "Dodaj/Edytuj",array("class" => "button"));
+        $form->toHtml();
+        $form->assign_theme("my_form", $theme);
+        
+        if($form->validate()){
+            $valuesForm = $form->exportValues();
+            if($recID != 0){
+                Utils_RecordBrowserCommon::update_record("kontrakty_extra_data", $recID, array('szefowa_value_discount' => $valuesForm['szefowa_value_discount'], 
+                "szefowa_notatka" =>  $valuesForm['szefowa_notatka'] ) , false);
+            }else{
+               $rboValues->new_record(array("tucz" => $record['id'], "szefowa_value_discount" => $valuesForm['szefowa_value_discount'],
+                "szefowa_notatka" =>  $valuesForm['szefowa_notatka']));
+            }
+        }
 
         $theme->assign("details", $this->raportSzefowaData($record));
-        $theme->display('raport_szefowa');
+        $theme->display("raport_szefowa");
+
+
+
     }
     public function deleteTucz($id){
         Utils_RecordBrowserCommon::delete_record("kontrakty", $id);
@@ -1981,13 +2191,7 @@ class tuczkontraktowy extends Module {
     }
     public function main(){
         $fcallback = array('tuczkontraktowyCommon','fv_format');
-        Base_ActionBarCommon::add(
-            'add',
-            'Dodaj nową fakture', 
-            Utils_RecordBrowserCommon::create_new_record_href('kontrakty_faktury',$def=array(),$id='none'),
-                null,
-                5
-        );
+
         Base_ActionBarCommon::add(
             'add',
             'Dodaj nowy tucz', 
@@ -2081,7 +2285,6 @@ class tuczkontraktowy extends Module {
             }
         }
         Base_ThemeCommon::install_default_theme($this->get_type());
-        custom::create_new_faktura();
         Epesi::js('jq(".name").html("");
                  jq(".name").html("<div> Tucze kontraktowe </div>");');
         $gb =  $this->init_module('Utils/GenericBrowser',null, 'kontrakty');

@@ -116,8 +116,18 @@ class tuczkontraktowyCommon extends ModuleCommon {
 
         $ret = $record['fv_numer'];
         return $ret;
+	}
+	
+	public static function contractsFormat($record, $nolink=false){
+        /*if (is_numeric($record)) $record = self::get_contact($record);
+        if (!$record || $record=='__NULL__') return null;
+        $ret = '';
+		$format = Base_User_SettingsCommon::get('CRM_Contacts','contact_format');
+		$label = trim(str_replace(array('##l##','##f##'), array($record['last_name'], $record['first_name']), $format));
+		
+        return Utils_RecordBrowserCommon::create_linked_text($label, 'contact', $record['id'], $nolink,
+				array(array('CRM_ContactsCommon','contact_get_tooltip'), array($record)));*/
     }
-
 
 	public static function view_upadki($record, $mode){
 		if($mode == "adding" ){
@@ -135,6 +145,63 @@ class tuczkontraktowyCommon extends ModuleCommon {
 
 	}
 
+	public static function QFfield_status(&$form, $field, $label, $mode, $default, $desc, $rb_obj) {
+        Utils_RecordBrowserCommon::QFfield_commondata($form, $field, $label, $mode, $default, $desc, $rb_obj);
+        if ($mode == 'add') {
+			$form->setDefaults(array($field=> "0"));
+        }
+	}
+	
+	public static function QFfield_company(&$form, $field, $label, $mode, $default, $desc, $rb_obj) {
+        Utils_RecordBrowserCommon::QFfield_select($form, $field, $label, $mode, $default, $desc, $rb_obj);
+        if ($mode == 'add' || $mode = 'edit') {
+			$form->setDefaults(array($field =>  $_SESSION['advances']));
+			$form->freeze(array($field));
+		}
+		if ($mode == 'view') {
+			$form->freeze(array($field));
+        }
+	}
+
+	public static function QFfield_autoTucz(&$form, $field, $label, $mode, $default, $desc, $rb_obj) {
+		$label = "Tucz rozliczenia";
+		Utils_RecordBrowserCommon::QFfield_select($form, $field, $label, $mode, $default, $desc, $rb_obj);
+		if ($mode == 'view') {		
+			$form->freeze(array($field));
+        }
+	
+		if ($mode == 'add' || $mode == 'edit') {
+			$form->setDefaults(array($field =>  $_SESSION['advances']));
+			$form->freeze(array($field));
+		}
+    }
+	public static function QFfield_tucz(&$form, $field, $label, $mode, $default, $desc, $rb_obj) {
+		$label = "Tucz rozliczenia";
+		Utils_RecordBrowserCommon::QFfield_select($form, $field, $label, $mode, $default, $desc, $rb_obj);
+		if ($mode == 'view') {
+			$form->freeze(array($field));
+        }
+		
+		if ($mode == 'add' || $mode == 'edit') {
+			$form->freeze(array($field));
+		}
+    }
+
+
+	public static function loansLabel(){
+		return array('label' => 'Pożyczki', 'show' => true);
+		
+	}
+
+	public static function advancesLabel(){
+		return array('label' => 'Zaliczki', 'show' => true);
+		
+	}
+
+	public static function employees_crits(){
+		return array('(company_name'=>CRM_ContactsCommon::get_main_company(),'|related_companies'=>array(CRM_ContactsCommon::get_main_company()));
+	}
+	
 	//pozycje z faktur
 	public static function on_add_details($record, $mode){
 		if($mode == 'adding'){

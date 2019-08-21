@@ -116,6 +116,19 @@
             <td> {$details.karaWagi} zł</td>
         {/if}
     </tr>
+    {if $details.loans}
+    <tr>
+        <td colspan='3'> Pożyczki  </td>
+        <td colspan="1"><span style='color:red;'> -{$details.loans} zł</span>   </td>
+    </tr>
+    {/if}
+    {if $details.advances}
+    <tr>
+        <td colspan='3'>  Zaliczki  </td>
+        <td colspan="1"><span style='color:red;'> -{$details.advances} zł </span>   </td>
+    </tr>
+    {/if}
+
 
         {if $details.nf }
     <tr>
@@ -139,4 +152,53 @@
 
 
     </table>
+{if $advances}
+<table class="ttable ttable-hover ttable-bordered" style="margin-top:15px;margin-bottom:15px;user-select: text;width:60%;">
+<tr>
+<th colspan='5'><h3>Zaliczki</h3></th>
+</tr>
+    <tr>
+        <th>Opis</th>
+        <th>Kwota</th>
+        <th>Termin przekazania pieniędzy</th>
+        <th>Uwagi</th>
+        <th>Rozlicz </th>
+    </tr>
+    {foreach from=$advances item=advance key=key name=name}
+        <tr>
+            <td>{$advance.note}</td>
+            <td>{$advance.value}</td>
+            <td>{$advance.payment_date}</td>
+            <td>{$advance.comments}</td>
+            <td><input style='width:15px;height:15px;' type='checkbox' {$advance.href} /></td>
 
+        </tr>
+    {/foreach}
+    
+</table>
+{/if}
+{if $loans}
+<table class="ttable ttable-hover ttable-bordered" style="margin-top:15px;margin-bottom:15px;user-select: text;width:60%;">
+<tr>
+<th colspan='5'><h3>Pożyczki</h3></th>
+</tr>
+    <tr>
+        <th>Opis</th>
+        <th>Kwota</th>
+        <th>Termin do spłaty</th>
+        <th>Uwagi</th>
+        <th>Rozlicz </th>
+    </tr>
+    {foreach from=$loans item=loan key=key name=name}
+        <tr>
+            <td>{$loan.note}</td>
+            <td>{$loan.value}</td>
+            <td>{$loan.payment_date}</td>
+            <td>{$loan.comments}</td>
+            <td><input style='width:15px;height:15px;' type='checkbox' {$loan.href} /></td>
+
+        </tr>
+    {/foreach}
+    
+</table>
+{/if}

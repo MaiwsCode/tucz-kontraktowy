@@ -24,9 +24,12 @@ class tuczkontraktowy_Kontrakty  extends RBO_Recordset {
         $farmer->from('company')->set_crits_callback("tuczkontraktowyCommon::critOnlyFarmers")->fields('company_name')->set_visible()->set_required();
 
         //notatka 
-        $note = new RBO_Field_LongText(_M("Note"));
-        $note->set_visible();
+        $note = new RBO_Field_Text(_M("Note"));
+        $note->set_visible()->set_length(64);
 
+        //uwagi
+        $comments = new RBO_Field_LongText(_M("Comments"));
+        $comments->set_visible();
 
         //kolczyk
         $kolczyk = new RBO_Field_Text(_M("Kolczyk"));
@@ -40,7 +43,7 @@ class tuczkontraktowy_Kontrakty  extends RBO_Recordset {
         $status->from('Kontrakty/status')->set_required()->set_visible();
 
         return array($data_start,$farmer,
-        $note,$kolczyk,$name,$status); // - remember to return all defined fields
+        $note,$comments,$kolczyk,$name,$status); // - remember to return all defined fields
  
  
     }

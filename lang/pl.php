@@ -34,7 +34,8 @@ $translations['szt']=  'Sztuk';
 $translations['amount szt']=  'Ilość sztuk';
 $translations['meat weight']=  'Waga mięsa';
 $translations['deliverer']=  'Dostawca';
-$translations['comments']=  'uwagi';
+$translations['Comments']=  'Uwagi';
+$translations['comments']=  'Uwagi';
 $translations['document']=  'Dokument';
 $translations['company']=  'Firma';
 $translations['date']=  'Data';
@@ -73,6 +74,11 @@ $translations['suboptimal']=  'Nie optymalne wagowo (-5)';
 $translations['badweight']=  'W złej wadze (-10)';
 $translations['weightcarempty']=  'Waga auta pusto';
 $translations['weightcarfull']=  'Waga auta pełno';
+$translations['payment_deadline']=  'Termin wymagalności';
+$translations['value']=  'Kwota';
+$translations['note']=  'Opis';
+$translations['tucz']=  'Tucz rozliczenia';
+$translations['payment_date']=  'Data przekazania pieniędzy';
 
 
 ?>
