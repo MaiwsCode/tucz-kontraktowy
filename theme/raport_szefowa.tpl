@@ -36,8 +36,8 @@
     </tr>
 
     <tr>
-        <td> Inne {$my_form_data.szefowa_value_discount.html} zł</td>
-        <td> Notatka {$my_form_data.szefowa_notatka.html}</td>
+        <td> Notatka <br> {$my_form_data.szefowa_notatka.html}</td>
+        <td> Inne <br> {$my_form_data.szefowa_value_discount.html} zł</td>
         <td> {$my_form_data.save.html}</td>
     </tr>
     <tr>
