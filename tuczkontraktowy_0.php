@@ -2499,7 +2499,7 @@ class tuczkontraktowy extends Module {
                 $dateStart = date("Y-m-01" , strtotime($year."-".$w."-01"));
                 $dateEnd =  date("Y-m-t", strtotime($year."-".$w."-01"));
                 $contractsRbo = new RBO_RecordsetAccessor('kontrakty');
-                $contracts = $contractsRbo->get_records(array(">=data_start" => $dateStart, "<=data_start" => $dateEnd),array(),array());
+                $contracts = $contractsRbo->get_records(array(">=data_start" => $dateStart, "<=data_start" => $dateEnd,'!status' => array("Done","Ended","rejected")),array(),array());
                 foreach($contracts as $contract){
                     foreach($months as $k => $v){
                         $contractsArrayIds[$contract['id']]['months'][$k] = 0;
