@@ -867,7 +867,8 @@ class tuczkontraktowy extends Module {
             custom::openButtonsPanel();     
             custom::button("action=show","Wstecz");
             custom::closeButtonsPanel();
-            $daty =  DB::GetAll("SELECT DISTINCT f_date_weight FROM kontrakty_wazenie_data_1 WHERE f_id_tuczu = " .$record['id']. "  ORDER BY f_date_weight");
+            $daty =  DB::GetAll("SELECT DISTINCT f_date_weight FROM kontrakty_wazenie_data_1 WHERE (f_id_tuczu = " .$record['id']. " AND active = 1)  ORDER BY f_date_weight");
+
             $width = 100 / (count($daty[$i][0]) + 1);
 
             $next_days =array();
@@ -1668,7 +1669,7 @@ class tuczkontraktowy extends Module {
         $details['naSztuke'] = 0;
         $details['zakladanaIlosc'] = $zalozenia['planned_amount'];
         $rboAdvances = new RBO_RecordsetAccessor("kontrakty_advances");
-        $advances = $rboAdvances->get_records(array("tucz" => $record['id']),array(),array());
+        $advances = $rboAdvances->get_records(array("tucz" => $record['id'], "status" => "1"),array(),array());
         $rboLoans = new RBO_RecordsetAccessor("loans");
         $loans = $rboLoans->get_records(array("tucz" => $record['id'], "status" => "1"),array(),array());
         $advancesSum = 0;
