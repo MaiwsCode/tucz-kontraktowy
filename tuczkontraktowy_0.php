@@ -1780,7 +1780,6 @@ class tuczkontraktowy extends Module {
         }
         $details['upadki'] = $a;
         $details['bazowaWartosc'] = custom::change_spearator($details['bazowaCena'],",",".") * $details['pelnowartosciowe']  ;
-        $details['weterynariaWartosc'] = custom::change_spearator($details['weterynariaCena'],",",".") * $details['pelnowartosciowe']  ;
         $details['suma'] += $details['bazowaWartosc'];
         $details['naSztuke'] += $details['bazowaWartosc'];
         $details['bazowaWartosc'] = number_format($details['bazowaWartosc'], 2,',',' ');
@@ -1824,6 +1823,17 @@ class tuczkontraktowy extends Module {
         $details['badweightWartosc'] = number_format($details['badweightWartosc'], 2,',',' ');
         $details['przyrost'] = $details['wagaZywaTucznikow'] - $details['wagaWarchlakow'];
 
+        if($details['inne'] > custom::change_spearator($details['weterynariaCena'],",",".")){
+            //minus
+            $details['weterynariaWartosc'] =   $details['inne'] - custom::change_spearator($details['weterynariaCena'],",",".");
+            $details['weterynariaWartosc'] = $details['weterynariaWartosc'] * $details['pelnowartosciowe'];
+            $details['weterynariaWartosc'] = $details['weterynariaWartosc'] * (-1);
+        }else{
+            //+
+            $details['weterynariaWartosc'] = custom::change_spearator($details['weterynariaCena'],",",".") -  $details['inne'] ;
+            $details['weterynariaWartosc'] = $details['weterynariaWartosc'] * $details['pelnowartosciowe'];
+        }
+
         if($zalozenia['deliverer'] == $record['farmer'] || $zalozenia['deliverer'] == $rolnik['parent_company'] ){
             $waga = $details['wagaZywaTucznikow'] ;
             $details['nfPrice'] = 0;
@@ -1852,16 +1862,6 @@ class tuczkontraktowy extends Module {
             $details['suma'] += $details['nfPrice'];
 
         }else{
-            if($details['inne'] > custom::change_spearator($details['weterynariaCena'],",",".")){
-                //minus
-                $details['weterynariaWartosc'] =   $details['inne'] - custom::change_spearator($details['weterynariaCena'],",",".");
-                $details['weterynariaWartosc'] = $details['weterynariaWartosc'] * $details['pelnowartosciowe'];
-                $details['weterynariaWartosc'] = $details['weterynariaWartosc'] * (-1);
-            }else{
-                //+
-                $details['weterynariaWartosc'] = custom::change_spearator($details['weterynariaCena'],",",".") -  $details['inne'] ;
-                $details['weterynariaWartosc'] = $details['weterynariaWartosc'] * $details['pelnowartosciowe'];
-            }
             $premia = 0;
             $details['nfPrice'] = 0;
             $waga = $details['wagaZywaTucznikow'] ;
