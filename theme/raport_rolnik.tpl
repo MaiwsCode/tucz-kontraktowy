@@ -191,11 +191,17 @@
     </tr>
     {foreach from=$loans item=loan key=key name=name}
         <tr>
-            <td>{$loan.note}</td>
+            <td>RATA {$loan.i}</td>
             <td>{$loan.value}</td>
-            <td>{$loan.payment_date}</td>
+            <td>{$loan.payment_deadline}</td>
             <td>{$loan.comments}</td>
-            <td><input style='width:15px;height:15px;' type='checkbox' {$loan.href} /></td>
+            <td>
+            {if $loan.href}
+                <input style='width:15px;height:15px;' type='checkbox' {$loan.href} />
+                {else}
+                Rozliczono 
+            {/if}
+            </td>
 
         </tr>
     {/foreach}

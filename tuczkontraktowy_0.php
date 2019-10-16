@@ -1028,13 +1028,94 @@ class tuczkontraktowy extends Module {
        ');
         
     }
+    public function deleteAnyRecord($id,$table){
+        Utils_RecordBrowserCommon::delete_record($table,$id);
+    }
+
+
     //pozyczki -> FIRMA
     public function loans($record){
+        Base_ThemeCommon::install_default_theme($this->get_type());
+        $rboLoans = new RBO_RecordsetAccessor("loans");
+        $rboLoansParts = new RBO_RecordsetAccessor("loans_parts");
+
         $_SESSION['advances'] = $record['id'];
+        if($_REQUEST['check']){
+            Utils_RecordBrowserCommon::update_record("loans_parts", $_REQUEST['loanID'], array("status" => 1));
+            $rec = $rboLoansParts->get_record($_REQUEST['loanID']);
+            //get all parts and change status 
+            $parts = $rboLoansParts->get_records_count(array("parent" => $rec['parent']),array(),array());
+            $partsCompleted = $rboLoansParts->get_records_count(array("parent" => $rec['parent'],'status' => 1),array(),array());
+            if($parts == $partsCompleted){
+                $main = $rboLoans->get_record($rec['parent']);
+                $main['status'] = 1;
+                $main->save();
+            }
+        }
 
-        $rb = $this->init_module(Utils_RecordBrowser::module_name(),'loans','addon');
+        $createNewLoan = Utils_RecordBrowserCommon::create_new_record_href('loans',array(),'none',true,false);
+        Base_ThemeCommon::load_css('tuczkontraktowy','loans');
+        $arrowUp = 'src="data/Base_Theme/templates/default/Utils/GenericBrowser/move-up.png"';
+        $arrowDown = 'src="data/Base_Theme/templates/default/Utils/GenericBrowser/move-down.png"';
+        $add = 'src="data/Base_Theme/templates/default/Utils/Tree/plus.gif" title="Dodaj Ratę"';
+        $del_btn = "<img class='miniIcons' border='0' src='data/Base_Theme/templates/default/Utils/Calendar/delete.png' alt='Usuń' title='Usuń' />";
+        $check_btn = "<img class='miniIcons' border='0' src='data/Base_Theme/templates/default/Utils/Watchdog/mark_as_read.png' alt='Rozlicz' title='Rozlicz' />";
+        $edit_btn = "<img class='miniIcons' border='0' src='data/Base_Theme/templates/default/Utils/Calendar/edit.png' alt='Edytuj' title='Edytuj' />";
+        $theme = $this->init_module('Base/Theme');
+        $theme->assign("arrowUp",$arrowUp);
+        $theme->assign("arrowDown",$arrowDown);
+        $theme->assign("newLoan",$createNewLoan);
 
-		$this->display_module($rb, array(array('company'=> $record['id']), array(), array("payment_deadline" => "DESC")), 'show_data'); 
+        $loans = $rboLoans->get_records(array("company" => $record['id']),array(),array('status'=>"ASC","payment_deadline" => "ASC"));
+        foreach($loans as $loan){
+            $loan['remained'] = $loan['value'];
+            
+            $loan['status'] = $loan->get_val("status");
+            $loan['value'] = $loan->get_val("value");
+
+            $loan['newChild'] = Utils_RecordBrowserCommon::create_new_record_href('loans_parts',array("parent"=>$loan['id']));
+            $parts =  $rboLoansParts->get_records(array("parent" => $loan['id']),array(),array("payment_deadline" => "ASC"));
+            foreach($parts as $part){
+                if($part['status']){
+                    $loan['remained'] -= $part['value'];
+                    $part['status'] = $part->get_val("status");
+                    if($part['tucz'] != NULL){
+                        $part['status'] .= " w tuczu &nbsp;".$part->get_val("tucz",false);
+                    }
+                }else{
+                    $part['del'] = "<a " . $this->create_confirm_callback_href("Na pewno usunąć?",
+                    array($this, "deleteAnyRecord"), array($part['id'],"loans_parts")) . "> " . $del_btn . "</a> ";
+
+                    $part['check'] = "<a ". $this->create_href(array("check" => true, 'loanID'=>$part['id'])) ."> ".$check_btn."</a> " ;
+                    $part['edit'] =  $part->record_link($edit_btn,false,'edit');
+                    $part['status'] = $part->get_val("status");
+                }
+                $part['value'] = $part->get_val("value");
+            }
+
+            $loan['remained'] = number_format($loan['remained'],2,',',' ');
+
+            $loan['parts'] = $parts;
+        }
+        $theme->assign("loans",$loans);
+        $theme->assign("add",$add);
+
+
+        $theme->display("loans");
+        load_js($this->get_module_dir().'js/loan.js');
+        $srcUp = 'data/Base_Theme/templates/default/Utils/GenericBrowser/move-up.png';
+        $loansExpanded = $_SESSION['expanded'];
+        foreach($loansExpanded as $expand){
+            Epesi::js("jq(document).ready(function(){
+            jq('#loan_$expand').children('img').attr('src', '$srcUp');
+            jq('#loan_$expand').removeClass('expand');
+            jq('#loan_$expand').addClass('collapse');
+            jq('.loan_$expand').css('display','flex');});
+            ");
+        }
+
+        
+
     }
 
     //zaliczki -> TUCZE
@@ -1670,7 +1751,7 @@ class tuczkontraktowy extends Module {
         $details['zakladanaIlosc'] = $zalozenia['planned_amount'];
         $rboAdvances = new RBO_RecordsetAccessor("kontrakty_advances");
         $advances = $rboAdvances->get_records(array("tucz" => $record['id'], "status" => "1"),array(),array());
-        $rboLoans = new RBO_RecordsetAccessor("loans");
+        $rboLoans = new RBO_RecordsetAccessor("loans_parts");
         $loans = $rboLoans->get_records(array("tucz" => $record['id'], "status" => "1"),array(),array());
         $advancesSum = 0;
         $loansSum = 0;
@@ -1933,14 +2014,26 @@ class tuczkontraktowy extends Module {
 
 
     public function raport_rolnik($record){
+        $loansRbo = new RBO_RecordsetAccessor("loans");
+        $loansPartsRbo = new RBO_RecordsetAccessor("loans_parts");
 
         if($_REQUEST['advance']){
             Utils_RecordBrowserCommon::update_record("kontrakty_advances", $_REQUEST['advance'],
                  array('status' => '1') , false);
         }
         if($_REQUEST['loan']){
-            Utils_RecordBrowserCommon::update_record("loans", $_REQUEST['loan'],
+            Utils_RecordBrowserCommon::update_record("loans_parts", $_REQUEST['loan'],
                  array('status' => '1', 'tucz' => $_REQUEST['tucz']) , false);
+
+            $rec = $loansPartsRbo->get_record($_REQUEST['loan']);
+            $all_loans = $loansPartsRbo->get_records_count(array("parent" => $rec['parent']),array(),array());
+            $loans_completed = $loansPartsRbo->get_records_count(array("parent" => $rec['parent'], 'status' => '1'),array(),array());
+            if($all_loans == $loans_completed){
+                Utils_RecordBrowserCommon::update_record("loans", $rec['parent'],
+                array('status' => '1', 'tucz' => $_REQUEST['tucz']) , false);
+            }
+
+
         }
         $help = "<ul style='text-align:left;'>";
         $help .= "<li> W tym miejscu mamy wygenerowany raport dla rolinka. Należy pamiętać ze nie będzie on dobrze wyliczony 
@@ -1959,20 +2052,38 @@ class tuczkontraktowy extends Module {
                 5
         );
         $advancesRbo = new RBO_RecordsetAccessor("kontrakty_advances");
-        $advances = $advancesRbo->get_records(array("tucz" => $record['id'], "status" => "0"),array(),array("payment_date" => "ASC"));
+        $advances = $advancesRbo->get_records(array("tucz" => $record['id']),array(),array("payment_date" => "ASC"));
         $theme = $this->init_module('Base/Theme');
         foreach($advances as $advance){
             $advance['value'] = $advance->get_val('value');
-            $advance['href'] = $this->create_href(array("advance" => $advance['id'],'tucz' => $record['id']));
+            if($advance['status'] == 0){
+                $advance['href'] = $this->create_href(array("advance" => $advance['id'],'tucz' => $record['id']));
+            }
         }
-        $loansRbo = new RBO_RecordsetAccessor("loans");
-        $loans = $loansRbo->get_records(array("company" => $record['farmer'], "status" => "0"),array(),array("payment_date" => "ASC"));
+        $loans = $loansRbo->get_records(array("company" => $record['farmer']),array(),array("payment_deadline" => "ASC"));
+        $loansIds = array();
+        $loansParts  = NULL;
         foreach($loans as $loan){
-            $loan['value'] = $loan->get_val('value');
-            $loan['href'] = $this->create_href(array("loan" => $loan['id'],'tucz' => $record['id']));
+            $lns =  $loansPartsRbo->get_records(array("parent" => $loan['id'],'(tucz' => $record['id'], '|status'=> 0), array(),array("payment_deadline" => "ASC"));
+            $i = 1;
+            foreach($lns as $l){
+                $l['value'] = $l->get_val('value');
+                $l['payment_deadline'] = $l->get_val('payment_deadline');
+                if($l['status'] == 0){
+                    $l['href'] = $this->create_href(array("loan" => $l['id'],'tucz' => $record['id']));
+                }
+                $loansParts[$l['id']]['i'] = $i;
+                $i++;
+                $loansParts[$l['id']]['value'] = $l['value'];
+                $loansParts[$l['id']]['comments'] = $loan['comments'];
+                $loansParts[$l['id']]['payment_deadline'] = $l['payment_deadline'];
+                $loansParts[$l['id']]['href'] = $l['href'];
+                $loansParts[$l['id']]['link'] = $loan->record_link($loan['note']);
+            }
+    
         }
 
-        $theme->assign("loans", $loans);  
+        $theme->assign("loans", $loansParts);  
         $theme->assign("advances", $advances);  
         $theme->assign("details", $this->raportRolnikData($record));      
         if($_REQUEST['download'] == "pdf"){

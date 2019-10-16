@@ -151,6 +151,11 @@ class tuczkontraktowyCommon extends ModuleCommon {
 			$form->setDefaults(array($field=> "0"));
         }
 	}
+	public static function QFfield_parent(&$form, $field, $label, $mode, $default, $desc, $rb_obj) {
+        if ($mode == 'add' || $mode== 'view') {
+			$form->freeze(array($field));
+        }
+	}
 	
 	public static function QFfield_company(&$form, $field, $label, $mode, $default, $desc, $rb_obj) {
         Utils_RecordBrowserCommon::QFfield_select($form, $field, $label, $mode, $default, $desc, $rb_obj);
