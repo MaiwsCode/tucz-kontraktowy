@@ -170,7 +170,14 @@
             <td>{$advance.value}</td>
             <td>{$advance.payment_date}</td>
             <td>{$advance.comments}</td>
-            <td><input style='width:15px;height:15px;' type='checkbox' {$advance.href} /></td>
+            <td>
+            {if $advance.href}
+                <input style='width:15px;height:15px;' type='checkbox' {$advance.href} />
+            {else}
+                Rozliczono 
+            {/if}
+            
+            </td>
 
         </tr>
     {/foreach}

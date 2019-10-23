@@ -14,7 +14,7 @@
         </li>
         {foreach from=$loans item=loan key=key name=name}
             <li class="table-row">
-                <div class="col-3" data-label="">{$loan.payment_deadline}</div>
+                <div class="col-3" data-label="">{$loan.note} <br> {$loan.payment_deadline}</div>
                 <div class="col-3" data-label=""><b>{$loan.value} </b></div>
                 <div class="col-3" data-label=""><b>{$loan.remained} zł </b></div>
                 <div class="col-3" data-label="">{$loan.status}</div>

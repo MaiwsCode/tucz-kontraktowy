@@ -1072,6 +1072,7 @@ class tuczkontraktowy extends Module {
             
             $loan['status'] = $loan->get_val("status");
             $loan['value'] = $loan->get_val("value");
+            $loan['note'] = $loan["note"];
 
             $loan['newChild'] = Utils_RecordBrowserCommon::create_new_record_href('loans_parts',array("parent"=>$loan['id']));
             $parts =  $rboLoansParts->get_records(array("parent" => $loan['id']),array(),array("payment_deadline" => "ASC"));
@@ -2198,6 +2199,12 @@ class tuczkontraktowy extends Module {
         $details['zyskRolnik'] = $rolnikRaport['suma'];
         $details['zyskRolnik'] = custom::change_spearator( $details['zyskRolnik'],",",".");
         $details['zyskRolnik'] = custom::change_spearator( $details['zyskRolnik']," ","");
+        $details['advances'] = custom::change_spearator( $rolnikRaport['advances'],",",".");
+        $details['advances'] = custom::change_spearator( $rolnikRaport['advances']," ","");
+        $details['loans'] = custom::change_spearator( $rolnikRaport['loans'],",",".");
+        $details['loans'] = custom::change_spearator( $rolnikRaport['loans']," ","");
+        $details['zyskRolnik'] += $details['advances'];
+        $details['zyskRolnik'] += $details['loans'];
         $details['suma'] += ($details['kosztyWarchlaka'] * (-1)) - $details['kosztyInne'];
         $details['suma']   -= $details['transportedPrice'];
         $details['suma']  -= $details['zyskRolnik'];
@@ -2285,11 +2292,16 @@ class tuczkontraktowy extends Module {
         return $view." ".$edit." ".$delete." ";   
     }
 
+    public function analiz(){
+        
+    }
+
     public function body(){
 
 		$tabbed_browser = $this->init_module('Utils/TabbedBrowser');
 		$tabbed_browser->set_tab(__('Tucze'), array($this, 'main'));
-		$tabbed_browser->set_tab(__('Zestawienie'), array($this, 'reports'));
+        $tabbed_browser->set_tab(__('Zestawienie'), array($this, 'reports'));
+        $tabbed_browser->set_tab(__('Raprot z tuczy'), array($this, 'analiz'));
 		$this->display_module($tabbed_browser);
 
     }
