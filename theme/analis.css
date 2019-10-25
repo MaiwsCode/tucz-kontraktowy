@@ -1,0 +1,40 @@
+
+
+#analis > table{
+
+    min-width:100%;
+    overflow-x: auto;
+    max-width: 200%;   
+    border-top: 2px solid black;
+    border-bottom: 2px solid;
+    font-size:14px;
+    border-collapse: collapse;
+}
+
+
+#analis > table > tbody > tr > td{
+    border:1px solid black;
+    padding:5px;
+}
+#analis > table > tbody > tr > th{
+    border:1px solid black;
+    user-select: none;
+    padding:8px;
+}
+
+#analis > table > tbody > tr > th:hover{
+    background-color: white;
+    cursor:pointer;
+}
+#analis > table > tbody > tr:hover > td{
+    background-color: white;
+    cursor:pointer;
+}
+
+
+#analis > .sort{
+    width: 20px;
+    height: 20px;
+    text-align: center;
+    padding:3px;
+}

@@ -1811,7 +1811,7 @@ class tuczkontraktowy extends Module {
                 $details['wagaTucznikow'] += custom::change_spearator($fv['amount'],",",".");
             }
         }
-        $details['pelnowartosciowe'] = $details['zakladanaIlosc'] - $details['konfiskaty'] - $details['iloscPadlych'];
+        $details['pelnowartosciowe'] = $details['sumaTucznikow'] - $details['konfiskaty'];
         $details['dateEnd'] = $details['dateEnd'] / count($odbiory);
         $details['dateEnd'] = round($details['dateEnd'],0);
         $details['czasTuczu'] = $this->time2string($details['dateEnd'] -  strtotime($record['data_start']));
@@ -1925,16 +1925,16 @@ class tuczkontraktowy extends Module {
             if($waga >= 126.1){
                 $wspolczynnik = 2.90;
             }
-            else if($waga >= 122.1 && $waga <= 126.09){
+            else if($waga >= 122.10 && $waga <= 126.09){
                 $wspolczynnik = 2.85;
             }
-            else if ($waga >= 118.1 && $waga <= 122.09){
+            else if ($waga >= 118.10 && $waga <= 122.09){
                 $wspolczynnik = 2.80;
             }
-            else if($waga >= 115.1 && $waga <= 118.09){
+            else if($waga >= 115.10 && $waga <= 118.09){
                 $wspolczynnik = 2.75;
             }
-            else if($waga >= 110.1 && $waga <= 115.09){
+            else if($waga >= 110.10 && $waga <= 115.09){
                 $wspolczynnik = 2.70;
             }else if($waga < 110.1) {
                 $wspolczynnik = 2.70;
@@ -1949,22 +1949,22 @@ class tuczkontraktowy extends Module {
             $waga = $details['wagaZywaTucznikow'] ;
             $waga = $waga / $details['pelnowartosciowe'];
             $wspolczynnik = 0;
-            
-            if($waga >= 126.1){
+            $waga = round($waga,2);
+            if($waga >= 126.10){
                 $wspolczynnik = 2.90;
             }
-            else if($waga >= 122.1 && $waga <= 126.09){
+            else if($waga >= 122.10 && $waga <= 126.09){
                 $wspolczynnik = 2.85;
             }
-            else if ($waga >= 118.1 && $waga <= 122.09){
+            else if ($waga >= 118.10 && $waga <= 122.09){
                 $wspolczynnik = 2.80;
             }
-            else if($waga >= 115.1 && $waga <= 118.09){
+            else if($waga >= 115.10 && $waga <= 118.09){
                 $wspolczynnik = 2.75;
             }
-            else if($waga >= 110.1 && $waga <= 115.09){
+            else if($waga >= 110.10 && $waga <= 115.09){
                 $wspolczynnik = 2.70;
-            }else if($waga < 110.1) {
+            }else if($waga < 110.10) {
                 $wspolczynnik = 2.70;
             }
             $details['nf'] = false;
@@ -2188,7 +2188,7 @@ class tuczkontraktowy extends Module {
             $details['szefowaInne'] = custom::change_spearator( $v['szefowa_value_discount']," ",""); 
         }
 
-        $details['pelnowartosciowe'] = $details['tucznikAmount'] - $details['konfiskaty'] - $details['iloscPadlych'];
+        $details['pelnowartosciowe'] = $details['tucznikAmount'] - $details['konfiskaty'];
         $details['zyskRolnik'] = 0;
         $rolnikRaport = $this->raportRolnikData($record);
         if($rolnikRaport['nf'] == false){
@@ -2292,18 +2292,32 @@ class tuczkontraktowy extends Module {
         return $view." ".$edit." ".$delete." ";   
     }
 
-    public function analiz(){
-        
+    public function analise(){
+        $form = $this->init_module('Libs/QuickForm');
+
+        $form->addElement('automulti','automul','Tucze do porównania', 
+            array($this->get_type().'Common', 'automulti_search'), array(),
+            array($this->get_type().'Common', 'automulti_format'));
+        $form->addElement("submit", "submit", "Porównaj");
+        $form->display();
+        Base_ThemeCommon::load_css('tuczkontraktowy','analis');
+        $theme = $this->init_module('Base/Theme');
+        if($form->validate()){
+            $values = $form->exportValues();
+            $rboContracts = new RBO_RecordsetAccessor("kontrakty");
+            $records = $rboContracts->get_records(array("id" => $values['automul']),array(),array());
+            $theme->assign("records", $records);     
+        }
+        $theme->display("analis");
+        load_js($this->get_module_dir().'js/analis.js');
     }
 
     public function body(){
-
 		$tabbed_browser = $this->init_module('Utils/TabbedBrowser');
 		$tabbed_browser->set_tab(__('Tucze'), array($this, 'main'));
         $tabbed_browser->set_tab(__('Zestawienie'), array($this, 'reports'));
-        $tabbed_browser->set_tab(__('Raprot z tuczy'), array($this, 'analiz'));
+        $tabbed_browser->set_tab(__('Raport z tuczy'), array($this, 'analise'));
 		$this->display_module($tabbed_browser);
-
     }
     public function setStatus($val){
         if($val == "" || strlen($val) == 0){
