@@ -549,7 +549,7 @@ class tuczkontraktowy extends Module {
         $this->display_module( $gb );
 
         $difference = $pigs_amount - $falls_amount - $recived;
-        $f1 = round(($sum_alive_brutto / $recived),4);
+        $f1 = round(($sum_alive_brutto / $recived),2);
         $f2 = round(($sum_weight_on_fakt / $sum_alive_brutto),2);
         $f1 = custom::change_spearator($f1,".",",");
         $f2 = custom::change_spearator($f2,".",",");
@@ -1843,7 +1843,16 @@ class tuczkontraktowy extends Module {
 
         $details['srWagaTucznika'] =  $details['wagaZywaTucznikow'] / $details['sumaTucznikow'];
         $details['srWagaTucznika'] =   round( $details['srWagaTucznika'],2);
-
+        $waga = $details['srWagaTucznika'];
+        $wagaInt = round($waga,0);
+        $calc = $waga - $wagaInt;
+        if($calc < 0){
+            $calc *= -1;
+        }
+        if($calc >= 0.05){
+            $waga = round($waga,1);
+        }
+        $details['srWagaTucznika'] = $waga;
         $details['srWagaWarchlaka'] =  $details['wagaWarchlakow'] / $details['sumaWarchlakow'];
         $details['srWagaWarchlaka'] =   round( $details['srWagaWarchlaka'],2);
 
@@ -1917,10 +1926,8 @@ class tuczkontraktowy extends Module {
         }
 
         if($zalozenia['deliverer'] == $record['farmer'] || $zalozenia['deliverer'] == $rolnik['parent_company'] ){
-            $waga = $details['wagaZywaTucznikow'] ;
             $details['nfPrice'] = 0;
-            $waga = $waga / $details['pelnowartosciowe'];
-            $waga = round($waga,2);
+            $waga = $details['srWagaTucznika'];
             $details['nf'] = true;
             if($waga >= 126.1){
                 $wspolczynnik = 2.90;
@@ -1946,10 +1953,8 @@ class tuczkontraktowy extends Module {
         }else{
             $premia = 0;
             $details['nfPrice'] = 0;
-            $waga = $details['wagaZywaTucznikow'] ;
-            $waga = $waga / $details['pelnowartosciowe'];
+            $waga = $details['srWagaTucznika'];
             $wspolczynnik = 0;
-            $waga = round($waga,2);
             if($waga >= 126.10){
                 $wspolczynnik = 2.90;
             }
