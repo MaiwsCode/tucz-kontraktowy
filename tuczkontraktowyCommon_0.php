@@ -29,10 +29,10 @@ class tuczkontraktowyCommon extends ModuleCommon {
 
 
 	public static function automulti_search($arg) {
-		$records = Utils_RecordBrowserCommon::get_records("kontrakty", array("(~name_number" => "%$arg%", "|~farmer" => "%$arg%"),array(),array());
+		$records = Utils_RecordBrowserCommon::get_records("kontrakty", array("(~name_number" => "%$arg%", "|~farmer" => "%$arg%", "|~kolczyk" => "%arg%",  "status" => "Done"),array(),array());
 		$arrayReturned = array();
 		foreach($records as $record){
-			$arrayReturned[$record['id']."__".$record['name_number']] = $record['name_number'];
+			$arrayReturned[$record['id']."__".$record['name_number']] = $record['name_number']." (".$record['kolczyk'].")";
 		}
 		return $arrayReturned;
 		

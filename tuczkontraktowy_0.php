@@ -1811,6 +1811,17 @@ class tuczkontraktowy extends Module {
                 $details['wagaTucznikow'] += custom::change_spearator($fv['amount'],",",".");
             }
         }
+
+        $rboValues = new RBO_RecordsetAccessor("kontrakty_extra_data");
+        $values = $rboValues->get_records(array("tucz"=>$record['id']),array(),array());
+        $value = "";
+        foreach($values as $v){
+            $details['szefowaInne'] = custom::change_spearator( $v['szefowa_value_discount'],",","."); 
+            $details['szefowaInne'] = custom::change_spearator( $v['szefowa_value_discount']," ",""); 
+        }
+        $details['szefowaInne'] = $details['szefowaInne'] * -1;
+        $details['suma'] += $details['szefowaInne'];
+        $details['naSztuke'] += $details['szefowaInne'];
         $details['pelnowartosciowe'] = $details['sumaTucznikow'] - $details['konfiskaty'];
         $details['dateEnd'] = $details['dateEnd'] / count($odbiory);
         $details['dateEnd'] = round($details['dateEnd'],0);
@@ -1870,7 +1881,7 @@ class tuczkontraktowy extends Module {
             $a = round($a,2);
         }
         $details['upadki'] = $a;
-        $details['bazowaWartosc'] = custom::change_spearator($details['bazowaCena'],",",".") * $details['pelnowartosciowe']  ;
+        $details['bazowaWartosc'] = custom::change_spearator($details['bazowaCena'],",",".") * $details['pelnowartosciowe'];
         $details['suma'] += $details['bazowaWartosc'];
         $details['naSztuke'] += $details['bazowaWartosc'];
         $details['bazowaWartosc'] = number_format($details['bazowaWartosc'], 2,',',' ');
@@ -2006,6 +2017,7 @@ class tuczkontraktowy extends Module {
         $details['advances'] = number_format($details['advances'], 2,',',' ');
         $details['loans'] = number_format($details['loans'], 2,',',' ');
         $details['sumaperone'] = number_format($details['sumaperone'], 2,',',' ');
+        $details['szefowaInne'] = number_format($details['szefowaInne'], 2,',',' ');
         $details['suma'] += $details['weterynariaWartosc'];
         $details['weterynariaWartosc'] = number_format($details['weterynariaWartosc'], 2,',',' ');
         $details['inne'] = custom::change_spearator($details['inne'],".",",");
@@ -2017,7 +2029,6 @@ class tuczkontraktowy extends Module {
     public function loanView($record){
         
     }
-
 
     public function raport_rolnik($record){
         $loansRbo = new RBO_RecordsetAccessor("loans");
@@ -2215,7 +2226,6 @@ class tuczkontraktowy extends Module {
         $details['suma']  -= $details['zyskRolnik'];
         $details['suma']  += $details['tucznikPrice'];
         $details['perOne'] = $details['suma'] / $details['pelnowartosciowe'];
-        $details['suma'] += $details['szefowaInne'];
         $details['cenaZaWarchlaka'] = $details['kosztyWarchlaka'] / $details['sumaWarchlakow'];
         $details['tucznikWBC'] =  $details['tucznikPrice'] /  $details['tucznikWBC'] ;
         $details['tucznikWBC'] =  number_format($details['tucznikWBC'], 2,',',' ');
@@ -2303,14 +2313,43 @@ class tuczkontraktowy extends Module {
         $form->addElement('automulti','automul','Tucze do porównania', 
             array($this->get_type().'Common', 'automulti_search'), array(),
             array($this->get_type().'Common', 'automulti_format'));
+        $form->addElement('datepicker', 'from', 'Od');
+        $form->addElement('datepicker', 'to', 'Do');
         $form->addElement("submit", "submit", "Porównaj");
         $form->display();
         Base_ThemeCommon::load_css('tuczkontraktowy','analis');
         $theme = $this->init_module('Base/Theme');
         if($form->validate()){
             $values = $form->exportValues();
+            print_r($values);
             $rboContracts = new RBO_RecordsetAccessor("kontrakty");
-            $records = $rboContracts->get_records(array("id" => $values['automul']),array(),array());
+            if(count($values['automul']) && $values['from'] == '' && $values['to'] == ''){
+                $records = $rboContracts->get_records(array("id" => $values['automul']),array(),array());
+            }else{
+                $records = $rboContracts->get_records(array(">=data_start" => $values['from'], "<=data_start" => $values['to']) ,array(),array("data_start" => "ASC"));
+            }
+            foreach($records as $record){
+                $record['farmer'] = $record->get_val('farmer',true);
+                $record['status'] = $record->get_val("status");
+                $zal = Utils_RecordBrowserCommon::get_records("kontrakty_zalozenia", array('id_tuczu' => $record['id']));
+                foreach($zal as $z){$zal = $z;break;}
+                //zalozenia
+                $record['delivered'] = $zal['planned_amount']." szt";
+                //odbiory
+                $record['recived'] = '';
+
+                $record['weightStart'] = $zal['weight_pig_start']. " kg";
+                //upadki
+                $record['falls'] = '';
+                $record['pigWeight'] = '';
+                //delete
+                $record['feedCompany'] = $zal["deliverer"];
+                //zuzycie paszy
+                $record['feedConsum'] = '';
+                //wydajnosc brutto
+                $record['brutto'] = '';
+                $record['dateRecived'] = '';
+            }
             $theme->assign("records", $records);     
         }
         $theme->display("analis");

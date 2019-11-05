@@ -116,13 +116,13 @@
             <td> {$details.karaWagi} zł</td>
         {/if}
     </tr>
-    {if $details.loans}
+    {if $details.loans != '0,00'}
     <tr>
         <td colspan='3'> Pożyczki  </td>
         <td colspan="1"><span style='color:red;'> -{$details.loans} zł</span>   </td>
     </tr>
     {/if}
-    {if $details.advances}
+    {if $details.advances != '0,00'}
     <tr>
         <td colspan='3'>  Zaliczki  </td>
         <td colspan="1"><span style='color:red;'> -{$details.advances} zł </span>   </td>
@@ -139,6 +139,12 @@
     <tr>
         <td colspan='3'> Pasze (Premia)  </td>
         <td colspan='1'> {$details.nfPrice} zł  </td>
+    </tr>
+    {/if}
+     {if $details.szefowaInne != '0,00' }
+    <tr>
+        <td colspan='3'><h2>  Bonus </h2> </td>
+        <td colspan='1'> <h2> {$details.szefowaInne} zł </h2> </td>
     </tr>
     {/if}
     <tr>

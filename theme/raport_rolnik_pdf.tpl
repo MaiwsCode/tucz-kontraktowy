@@ -110,13 +110,20 @@
             <td><span ><font size="12">{$details.karaWagi} zł </font></span></td>
         {/if}
     </tr>
-    {if $details.loans}
+
+    {if $details.szefowaInne != '0,00'}
+        <tr>
+            <td bgcolor="#e6e6e6" ><h3>Bonus </h3></td><td></td><td></td>
+            <td ><h3>{$details.szefowaInne} zł </h3></td>
+        </tr>
+    {/if}
+    {if $details.loans != '0,00'}
         <tr>
             <td bgcolor="#e6e6e6" ><span ><font size="12">Pożyczki </font></span></td><td></td><td></td>
             <td ><span><font size="12" color="red"  >-{$details.loans} zł </font></span></td>
         </tr>
     {/if}
-    {if $details.advances}
+    {if $details.advances != '0,00'}
         <tr>
             <td bgcolor="#e6e6e6" ><span ><font size="12">Zaliczki </font></span></td><td></td><td></td>
             <td ><span><font size="12" color="red"  >-{$details.advances} zł </font></span></td>
