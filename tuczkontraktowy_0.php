@@ -2319,41 +2319,66 @@ class tuczkontraktowy extends Module {
         $form->display();
         Base_ThemeCommon::load_css('tuczkontraktowy','analis');
         $theme = $this->init_module('Base/Theme');
+        $rboContracts = new RBO_RecordsetAccessor("kontrakty");
+        $rboCompany = new RBO_RecordsetAccessor("company");
         if($form->validate()){
             $values = $form->exportValues();
-            print_r($values);
-            $rboContracts = new RBO_RecordsetAccessor("kontrakty");
             if(count($values['automul']) && $values['from'] == '' && $values['to'] == ''){
-                $records = $rboContracts->get_records(array("id" => $values['automul']),array(),array());
+                $records = $rboContracts->get_records(array("id" => $values['automul'], "status" => "Done"),array(),array());
             }else{
-                $records = $rboContracts->get_records(array(">=data_start" => $values['from'], "<=data_start" => $values['to']) ,array(),array("data_start" => "ASC"));
-            }
-            foreach($records as $record){
-                $record['farmer'] = $record->get_val('farmer',true);
-                $record['status'] = $record->get_val("status");
-                $zal = Utils_RecordBrowserCommon::get_records("kontrakty_zalozenia", array('id_tuczu' => $record['id']));
-                foreach($zal as $z){$zal = $z;break;}
-                //zalozenia
-                $record['delivered'] = $zal['planned_amount']." szt";
-                //odbiory
-                $record['recived'] = '';
-
-                $record['weightStart'] = $zal['weight_pig_start']. " kg";
-                //upadki
-                $record['falls'] = '';
-                $record['pigWeight'] = '';
-                //delete
-                $record['feedCompany'] = $zal["deliverer"];
-                //zuzycie paszy
-                $record['feedConsum'] = '';
-                //wydajnosc brutto
-                $record['brutto'] = '';
-                $record['dateRecived'] = '';
-            }
-            $theme->assign("records", $records);     
+                $records = $rboContracts->get_records(array(">=data_start" => $values['from'], "<=data_start" => $values['to'], "status" => "Done") ,array(),array("data_start" => "ASC"));
+            }  
+        }else{
+            $records = $rboContracts->get_records(array( "status" => "Done") ,array(),array("data_start" => "ASC"));
         }
+        
+        foreach($records as $record){
+            $record['farmer'] = $record->get_val('farmer',true);
+            $zal = Utils_RecordBrowserCommon::get_records("kontrakty_zalozenia", array('id_tuczu' => $record['id']));
+            foreach($zal as $z){$zal = $z;break;}
+
+            $raportRolnik = $this->raportRolnikData($record);
+
+            //zalozenia
+            $record['delivered'] = $zal['planned_amount'];
+            //odbiory
+            $record['recived'] = $raportRolnik['sumaTucznikow'];
+
+            $record['weightStart'] = $zal['weight_pig_start']. " kg";
+            //upadki
+            $record['falls'] = $raportRolnik['upadki']." %";
+            $record['pigWeight'] = $raportRolnik['srWagaTucznika']." kg";
+            //delete
+            if($zal['deliverer']){
+                $record['feedCompany'] = $rboCompany->get_record($zal['deliverer'])->company_name;
+            }else{
+                $record['feedCompany'] = '---';
+            }
+            //zuzycie paszy
+            $record['feedConsum'] = $raportRolnik['srZuzyciePaszy']." kg";
+            //wydajnosc brutto
+
+            $bruttoCalc = round(($raportRolnik['wagaTucznikow'] / $raportRolnik['wagaZywaTucznikow']),2);
+            $bruttoCalc = $bruttoCalc * 100;
+            $bruttoCalc = round($bruttoCalc,2);
+            $bruttoCalc = custom::change_spearator($bruttoCalc,".",",");
+            $record['brutto'] = $bruttoCalc." %";
+            $record['dateRecived'] = date("Y-m-d", $raportRolnik['dateEnd']);
+        }
+        $theme->assign("records", $records);   
         $theme->display("analis");
+        load_js($this->get_module_dir()."js/jquery.tablesorter.min.js");
+        load_js($this->get_module_dir()."jquery.tablesorter.widgets.min.js");
         load_js($this->get_module_dir().'js/analis.js');
+        Base_ThemeCommon::load_css('tuczkontraktowy','theme.default.min');
+        eval_js("	jq(function(){
+            jq('#data-table').tablesorter({
+                widgets        : ['zebra', 'columns'],
+                usNumberFormat : false,
+                sortReset      : true,
+                sortRestart    : true
+            });
+        });");
     }
 
     public function body(){
