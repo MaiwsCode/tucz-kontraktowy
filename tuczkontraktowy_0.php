@@ -2313,6 +2313,15 @@ class tuczkontraktowy extends Module {
         $form->addElement('automulti','automul','Tucze do porównania', 
             array($this->get_type().'Common', 'automulti_search'), array(),
             array($this->get_type().'Common', 'automulti_format'));
+
+        $crits = array();
+        $fcallback = array('tuczkontraktowyCommon','contact_format_company');
+        $form->addElement('autoselect', 'farmerSort', 'Filtruj po rolniku', array(),
+            array(array('tuczkontraktowyCommon','autoselect_company'), array($crits, $fcallback)), $fcallback);
+
+        $form->addElement('autoselect', 'feedSort', 'Filtruj po firmie paszowej', array(),
+            array(array('tuczkontraktowyCommon','autoselect_company'), array($crits, $fcallback)), $fcallback);
+
         $form->addElement('datepicker', 'from', 'Od');
         $form->addElement('datepicker', 'to', 'Do');
         $form->addElement("submit", "submit", "Porównaj");
@@ -2323,13 +2332,28 @@ class tuczkontraktowy extends Module {
         $rboCompany = new RBO_RecordsetAccessor("company");
         if($form->validate()){
             $values = $form->exportValues();
-            if(count($values['automul']) && $values['from'] == '' && $values['to'] == ''){
-                $records = $rboContracts->get_records(array("id" => $values['automul'], "status" => "Done"),array(),array());
-            }else{
-                $records = $rboContracts->get_records(array(">=data_start" => $values['from'], "<=data_start" => $values['to'], "status" => "Done") ,array(),array("data_start" => "ASC"));
-            }  
+            $crits = array("status" => "Done");
+            if(count($values['automul']) && $values['automul'] != '' ){
+                $crits["id"] = $values['automul'];
+            }
+            if($values['farmerSort'] != ''){
+                $crits["farmer"] = $values['farmerSort'];
+            }
+            if(count($values['from']) && $values['from'] != '' && count($values['to'] && $values['to'] != '')){
+                $crits['>=data_start'] = $values['from'];
+                $crits["<=data_start"] = $values['to'];
+            } 
+            if($values['feedSort'] != '' && count($values['feedSort'])){
+                $feeds = Utils_RecordBrowserCommon::get_records("kontrakty_zalozenia", array('deliverer' => $values['feedSort']));
+                $ids = [];
+                foreach($feeds as $feed){
+                    $ids[] = $feed['id_tuczu'];
+                }
+                $crits["id"] = $ids;
+            }
+            $records = $rboContracts->get_records($crits ,array(),array("data_start" => "ASC"));
         }else{
-            $records = $rboContracts->get_records(array( "status" => "Done") ,array(),array("data_start" => "ASC"));
+            $records = $rboContracts->get_records(array("status" => "Done") ,array(),array("data_start" => "ASC"));
         }
         
         foreach($records as $record){

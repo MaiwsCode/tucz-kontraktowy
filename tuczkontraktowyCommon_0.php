@@ -29,7 +29,9 @@ class tuczkontraktowyCommon extends ModuleCommon {
 
 
 	public static function automulti_search($arg) {
-		$records = Utils_RecordBrowserCommon::get_records("kontrakty", array("(~name_number" => "%$arg%", "|~farmer" => "%$arg%", "|~kolczyk" => "%arg%",  "status" => "Done"),array(),array());
+		$records = Utils_RecordBrowserCommon::get_records("kontrakty", 
+		array("(~name_number" => "%$arg%", "|~farmer" => "%$arg%", 
+		"|~kolczyk" => "%arg%",  "status" => "Done"),array(),array());
 		$arrayReturned = array();
 		foreach($records as $record){
 			$arrayReturned[$record['id']."__".$record['name_number']] = $record['name_number']." (".$record['kolczyk'].")";
@@ -37,6 +39,26 @@ class tuczkontraktowyCommon extends ModuleCommon {
 		return $arrayReturned;
 		
 	}
+
+	public static function autoselect_company($str, $crits, $format_callback) {
+        $str = explode(' ', trim($str));
+        foreach ($str as $k=>$v)
+            if ($v) {
+                $v = "%$v%";
+                $crits = Utils_RecordBrowserCommon::merge_crits($crits, array('(~company_name'=>$v,'|~tax_id'=>$v));
+            }
+        $recs = Utils_RecordBrowserCommon::get_records('company', $crits, array(), array('company_name'=>'ASC'), 10);
+        $ret = array();
+        foreach($recs as $v) {
+            $ret[$v['id']."__".$v['company_name']] = call_user_func($format_callback, $v, true);
+        }
+        return $ret;
+    }
+    public static function contact_format_company($record, $nolink=false){
+
+        $ret = $record['company_name'];
+        return $ret;
+    }
 
 	public static function automulti_format($record) {
 		return $record['name_number'];
