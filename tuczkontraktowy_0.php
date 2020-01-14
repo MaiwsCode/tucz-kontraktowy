@@ -1487,19 +1487,13 @@ class tuczkontraktowy extends Module {
             custom::create_new_faktura();
         }
 
-        $gb = &$this->init_module('Utils/GenericBrowser', null, 'Pasze');
-        $gb->set_table_columns(
-            array(
-                array('name'=>'Faktury zakupowe', 'width'=>20 ),
-                array('name'=>'Kwota', 'width'=>20),
-                array('name'=>'Dostawca', 'width'=>20),
-                array('name'=>'Nr faktury', 'width'=>20),
-                array('name'=>'Data', 'width'=>20)
-            )
-        );
+        Base_ThemeCommon::install_default_theme($this->get_type());
+        $theme = $this->init_module('Base/Theme');
+
         $tables_names = ['kontrakty_faktury_dostawa_warchlaka', 'kontrakty_faktury_dostawa_paszy',
             'kontrakty_inne' , 'kontrakty_faktury_odbior_tucznika' , 'kontrakty_faktury_transporty'];
         $ids_list = [];
+        $faktury_zakupowe = array();
         for($i = 0;$i<count($tables_names);$i++){
             $rbo  = new RBO_RecordsetAccessor($tables_names[$i]);
             $ids = $rbo->get_records(array('id_tuczu' => $record['id']),array(),array());
@@ -1507,49 +1501,34 @@ class tuczkontraktowy extends Module {
                 $ids_list[] = $id->fakt_poz;
             }
         }
-
+        $sumPrice = 0;
         $fvs_poz  = new RBO_RecordsetAccessor("kontrakty_faktury_pozycje");
         $fvs_poz_list = $fvs_poz->get_records(array('id'=>$ids_list),array(),array());
         $ids_list = [];
-        $sumPrice = 0;
+        $fvSumPrice = 0;
         foreach($fvs_poz_list as $fv_id){
             $fvs  = new RBO_RecordsetAccessor("kontrakty_faktury");
             if($fv_id['faktura'] != ''){
-                $fvs_list = $fvs->get_records(array('id'=>$fv_id['faktura'] , 'typ_faktury' => '1'),array(),array("date"=> "DESC"));
-                foreach ($fvs_list as $id) {
+            $fvs_list = $fvs->get_records(array('id'=>$fv_id['faktura'] , 'typ_faktury' => '1'),array(),array("date"=> "DESC"));
+                foreach ($fvs_list as $f) {
                     $sumPrice += substr($fv_id['price'],0,-3);
-                    $gb->add_row(
-                        '',
-                        number_format($fv_id['price'],2,',',' ' ). " zł",
-                        $id->record_link($id->get_val('company')),
-                        $id->create_default_linked_label(false,false),
-                        $id->record_link($id->get_val('date'))
-                    );
+                    $faktury_zakupowe[$f->id]['company'] = $f->record_link($f->get_val('company'));
+                    $faktury_zakupowe[$f->id]['fv'] = $f->record_link($f->get_val('fv_numer'));
+                    $fv_id['typ_faktury'] = $fv_id->get_val("typ_faktury",true);
+                    $fvSumPrice += substr($fv_id['price'],0,-3);
+                    $faktury_zakupowe[$f->id]['sumPrice'] +=  substr($fv_id['price'],0,-3);
+                    $fv_id['price'] = number_format(substr($fv_id['price'],0,-3),2,',','');
+                    $faktury_zakupowe[$f->id]['childs'][] =  $fv_id;
                 }
             }
         }
-        $gb->add_row(
-            '',
-            $bold.number_format($sumPrice,2,',',' ' ). " zł".$boldEnd,
-            '',
-            '',
-            ''
-        );
-        $this->display_module( $gb );
+        $sumPrice = number_format($sumPrice, 2,',',' ');
+        $theme->assign("zakupyPrice", $sumPrice);
 
-        $gb = &$this->init_module('Utils/GenericBrowser', null, 'd');
-        $gb->set_table_columns(
-            array(
-                array('name'=>'Faktury transportowe', 'width'=>20 ),
-                array('name'=>'Kwota', 'width'=>20),
-                array('name'=>'Dostawca', 'width'=>20),
-                array('name'=>'Nr faktury', 'width'=>20),
-                array('name'=>'Data', 'width'=>20)
-            )
-        );
         $tables_names = ['kontrakty_faktury_dostawa_warchlaka', 'kontrakty_faktury_dostawa_paszy',
-            'kontrakty_inne' , 'kontrakty_faktury_odbior_tucznika' , 'kontrakty_faktury_transporty'];
+        'kontrakty_inne' , 'kontrakty_faktury_odbior_tucznika' , 'kontrakty_faktury_transporty'];
         $ids_list = [];
+        $faktury_transportowe = array();
         for($i = 0;$i<count($tables_names);$i++){
             $rbo  = new RBO_RecordsetAccessor($tables_names[$i]);
             $ids = $rbo->get_records(array('id_tuczu' => $record['id']),array(),array());
@@ -1557,46 +1536,35 @@ class tuczkontraktowy extends Module {
                 $ids_list[] = $id->fakt_poz;
             }
         }
-
-        $ids_list = [];
         $sumPrice = 0;
+        $fvs_poz  = new RBO_RecordsetAccessor("kontrakty_faktury_pozycje");
+        $fvs_poz_list = $fvs_poz->get_records(array('id'=>$ids_list),array(),array());
+        $ids_list = [];
+        $fvSumPrice = 0;
         foreach($fvs_poz_list as $fv_id){
             $fvs  = new RBO_RecordsetAccessor("kontrakty_faktury");
             if($fv_id['faktura'] != ''){
-                $fvs_list = $fvs->get_records(array('id'=>$fv_id['faktura'], 'typ_faktury' => '2'),array(),array("date"=> "DESC"));
-                foreach ($fvs_list as $id) {
+            $fvs_list = $fvs->get_records(array('id'=>$fv_id['faktura'] , 'typ_faktury' => '2'),array(),array("date"=> "DESC"));
+                foreach ($fvs_list as $f) {
                     $sumPrice += substr($fv_id['price'],0,-3);
-                    $gb->add_row(
-                        '',
-                        number_format($fv_id['price'],2,',',' ' ). " zł",
-                        $id->record_link($id->get_val('company')),
-                        $id->create_default_linked_label(false,false),
-                        $id->record_link($id->get_val('date'))
-                    );
+                    $faktury_transportowe[$f->id]['company'] = $f->record_link($f->get_val('company'));
+                    $faktury_transportowe[$f->id]['fv'] = $f->record_link($f->get_val('fv_numer'));
+                    $fv_id['typ_faktury'] = $fv_id->get_val("typ_faktury",true);
+                    $fvSumPrice += substr($fv_id['price'],0,-3);
+                    $faktury_transportowe[$f->id]['sumPrice'] +=  substr($fv_id['price'],0,-3);
+                    $fv_id['price'] = number_format(substr($fv_id['price'],0,-3),2,',','');
+                    $faktury_transportowe[$f->id]['childs'][] =  $fv_id;
                 }
             }
         }
-        $gb->add_row(
-            '',
-            $bold.number_format($sumPrice,2,',',' ' ). " zł".$boldEnd,
-            '',
-            '',
-            ''
-        );
-        $this->display_module( $gb );
-        $gb = &$this->init_module('Utils/GenericBrowser', null, 'ws');
-        $gb->set_table_columns(
-            array(
-                array('name'=>'Faktury sprzedażowe', 'width'=>20 ),
-                array('name'=>'Kwota', 'width'=>20),
-                array('name'=>'Dostawca', 'width'=>20),
-                array('name'=>'Nr faktury', 'width'=>20),
-                array('name'=>'Data', 'width'=>20)
-            )
-        );
+
+        $sumPrice = number_format($sumPrice, 2,',',' ');
+        $theme->assign("transportyPrice", $sumPrice);
+
         $tables_names = ['kontrakty_faktury_dostawa_warchlaka', 'kontrakty_faktury_dostawa_paszy',
-            'kontrakty_inne' , 'kontrakty_faktury_odbior_tucznika' , 'kontrakty_faktury_transporty'];
+        'kontrakty_inne' , 'kontrakty_faktury_odbior_tucznika' , 'kontrakty_faktury_transporty'];
         $ids_list = [];
+        $faktury_sprzedazowe = array();
         for($i = 0;$i<count($tables_names);$i++){
             $rbo  = new RBO_RecordsetAccessor($tables_names[$i]);
             $ids = $rbo->get_records(array('id_tuczu' => $record['id']),array(),array());
@@ -1604,47 +1572,34 @@ class tuczkontraktowy extends Module {
                 $ids_list[] = $id->fakt_poz;
             }
         }
-
-        $ids_list = [];
         $sumPrice = 0;
+        $fvs_poz  = new RBO_RecordsetAccessor("kontrakty_faktury_pozycje");
+        $fvs_poz_list = $fvs_poz->get_records(array('id'=>$ids_list),array(),array());
+        $ids_list = [];
         foreach($fvs_poz_list as $fv_id){
             $fvs  = new RBO_RecordsetAccessor("kontrakty_faktury");
             if($fv_id['faktura'] != ''){
-                $fvs_list = $fvs->get_records(array('id'=>$fv_id['faktura'],'typ_faktury' => '0' ),array(),array("date"=> "DESC"));
-                foreach ($fvs_list as $id) {
+            $fvs_list = $fvs->get_records(array('id'=>$fv_id['faktura'] , 'typ_faktury' => '0'),array(),array("date"=> "DESC"));
+                foreach ($fvs_list as $f) {
                     $sumPrice += substr($fv_id['price'],0,-3);
-                    $gb->add_row(
-                        '',
-                        number_format($fv_id['price'],2,',',' ' ). " zł",
-                        $id->record_link($id->get_val('company')),
-                        $id->create_default_linked_label(false,false),
-                        $id->record_link($id->get_val('date'))
-                    );
+                    $faktury_sprzedazowe[$f->id]['company'] = $f->record_link($f->get_val('company'));
+                    $faktury_sprzedazowe[$f->id]['fv'] = $f->record_link($f->get_val('fv_numer'));
+                    $fv_id['typ_faktury'] = $fv_id->get_val("typ_faktury",true);
+                    $fvSumPrice += substr($fv_id['price'],0,-3);
+                    $faktury_sprzedazowe[$f->id]['sumPrice'] +=  substr($fv_id['price'],0,-3);
+                    $fv_id['price'] = number_format(substr($fv_id['price'],0,-3),2,',','');
+                    $faktury_sprzedazowe[$f->id]['childs'][] =  $fv_id;
                 }
             }
         }
-        $gb->add_row(
-            '',
-            $bold.number_format($sumPrice,2,',',' ' ). " zł".$boldEnd,
-            '',
-            '',
-            ''
-        );
-        $this->display_module( $gb );
+        $sumPrice = number_format($sumPrice, 2,',',' ');
+        $theme->assign("sprzedazPrice", $sumPrice);
 
-        $gb = &$this->init_module('Utils/GenericBrowser', null, 'e');
-        $gb->set_table_columns(
-            array(
-                array('name'=>'Pozostałe faktury', 'width'=>20 ),
-                array('name'=>'Kwota', 'width'=>20),
-                array('name'=>'Dostawca', 'width'=>20),
-                array('name'=>'Nr faktury', 'width'=>20),
-                array('name'=>'Data', 'width'=>20)
-            )
-        );
+
         $tables_names = ['kontrakty_faktury_dostawa_warchlaka', 'kontrakty_faktury_dostawa_paszy',
-            'kontrakty_inne' , 'kontrakty_faktury_odbior_tucznika' , 'kontrakty_faktury_transporty'];
+        'kontrakty_inne' , 'kontrakty_faktury_odbior_tucznika' , 'kontrakty_faktury_transporty'];
         $ids_list = [];
+        $faktury_inne = array();
         for($i = 0;$i<count($tables_names);$i++){
             $rbo  = new RBO_RecordsetAccessor($tables_names[$i]);
             $ids = $rbo->get_records(array('id_tuczu' => $record['id']),array(),array());
@@ -1652,58 +1607,49 @@ class tuczkontraktowy extends Module {
                 $ids_list[] = $id->fakt_poz;
             }
         }
-
-        $ids_list = [];
         $sumPrice = 0;
+        $fvs_poz  = new RBO_RecordsetAccessor("kontrakty_faktury_pozycje");
+        $fvs_poz_list = $fvs_poz->get_records(array('id'=>$ids_list),array(),array());
+        $ids_list = [];
         foreach($fvs_poz_list as $fv_id){
             $fvs  = new RBO_RecordsetAccessor("kontrakty_faktury");
             if($fv_id['faktura'] != ''){
-                $fvs_list = $fvs->get_records(array('id'=>$fv_id['faktura'] , '!typ_faktury' => array( '0','1','2')),array(),array("date"=> "DESC"));
-                foreach ($fvs_list as $id) {
+            $fvs_list = $fvs->get_records(array('id'=>$fv_id['faktura'] , '!typ_faktury' => array( '0','1','2')),array(),array("date"=> "DESC"));
+                foreach ($fvs_list as $f) {
                     $sumPrice += substr($fv_id['price'],0,-3);
-                    $gb->add_row(
-                        '',
-                        number_format($fv_id['price'],2,',',' ' ). " zł",
-                        $id->record_link($id->get_val('company')),
-                        $id->create_default_linked_label(false,false),
-                        $id->record_link($id->get_val('date'))
-                    );
+                    $faktury_inne[$f->id]['company'] = $f->record_link($f->get_val('company'));
+                    $faktury_inne[$f->id]['fv'] = $f->record_link($f->get_val('fv_numer'));
+                    $fv_id['typ_faktury'] = $fv_id->get_val("typ_faktury",true);
+                    $fvSumPrice += substr($fv_id['price'],0,-3);
+                    $faktury_inne[$f->id]['sumPrice'] +=  substr($fv_id['price'],0,-3);
+                    $fv_id['price'] = number_format(substr($fv_id['price'],0,-3),2,',','');
+                    $faktury_inne[$f->id]['childs'][] =  $fv_id;
                 }
             }
         }
-        $gb->add_row(
-            '',
-            $bold.number_format($sumPrice,2,',',' ' ). " zł".$boldEnd,
-            '',
-            '',
-            ''
-        );
-        $this->display_module( $gb );
-        /*$bold = "<span style='font-size:14px;font-weight:bold;'> ";
-        $boldEnd = "</span>";
-        $sumPrice = number_format($sumPrice,2,","," ");
-        $gb->add_row(
-            '',
-            "$bold $sumPrice zł $boldEnd",
-            '',
-            '',
-           ''
-        );*/
-        /*
-        $tabbed_browser = & $this->init_module('Utils/TabbedBrowser');
-        $tabbed_browser->start_tab( 'Zakup' );
-        print 'Lista faktur zakupowych';
-        $tabbed_browser->end_tab();
-        $tabbed_browser->start_tab( 'Transport' );
-        print 'Lista faktur transportowych';
-        $tabbed_browser->end_tab();
-        $tabbed_browser->start_tab( 'Sprzedaż' );
 
-        print 'Lista faktur sprzedażowych';
-        $tabbed_browser->end_tab();
+        $sumPrice = number_format($sumPrice, 2,',',' ');
+        $theme->assign("innePrice", $sumPrice);
 
-        $this->display_module( $tabbed_browser );*/
 
+        $theme->assign('faktury_zakupowe',$faktury_zakupowe);
+        $theme->assign('faktury_transportowe',$faktury_transportowe);
+        $theme->assign('faktury_sprzedazowe',$faktury_sprzedazowe);
+        $theme->assign('faktury_inne',$faktury_inne);
+
+        $theme->display('faktury');
+        load_js($this->get_module_dir()."js/jquery.tablesorter.min.js");
+        load_js($this->get_module_dir()."jquery.tablesorter.widgets.min.js");
+        load_js($this->get_module_dir().'js/analis.js');
+        Base_ThemeCommon::load_css('tuczkontraktowy','theme.default.min');
+        eval_js("	jq(function(){
+            jq('.data-table').tablesorter({
+                widgets        : ['zebra', 'columns'],
+                usNumberFormat : false,
+                sortReset      : true,
+                sortRestart    : true
+            });
+        });");
     }
 
     function colorStartTag($value){
