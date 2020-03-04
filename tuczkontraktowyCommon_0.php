@@ -26,8 +26,7 @@ class tuczkontraktowyCommon extends ModuleCommon {
 
     	return array('>=planed_purchase_date' => $newdate);
 	}
-
-
+  
 	public static function automulti_search($arg) {
 		$records = Utils_RecordBrowserCommon::get_records("kontrakty", 
 		array("(~name_number" => "%$arg%", "|~farmer" => "%$arg%", 
@@ -167,6 +166,25 @@ class tuczkontraktowyCommon extends ModuleCommon {
     }
 
 	public static function view_upadki($record, $mode){
+		if($mode == 'edit' || $mode == 'add'){
+			$rbo = new RBO_RecordsetAccessor("kontrakty_upadki");
+			$zalozenia = Utils_RecordBrowserCommon::get_records("kontrakty_zalozenia", array("id_tuczu" => $record['id_tuczu']),array(),array());
+			foreach ($zalozenia as $zalozenie){$zalozenia = $zalozenie;break;}
+			$inne = $rbo->get_records(array('id_tuczu' => $record['id_tuczu']),array(),array('date_fall' => "ASC"));
+			$falls = 0;
+			$tucz = Utils_RecordBrowserCommon::get_record("kontrakty",$record['id_tuczu']);
+			foreach($inne as $p){
+				$falls += $p['amount_fall'];
+			}
+			$alert =  0.8 * str_replace(",",".",$zalozenia['lose']);
+			$falls = $falls / $zalozenia['planned_amount'] * 100;
+			$falls = round($falls,2);
+			if($falls > $alert){
+				$msg  = "Dla tuczu ".$tucz["name_number"]." przekroczono upadki.\nZakładano: ".$zalozenia['lose']."% - padło ".$falls."%";
+				Base_MailCommon::send('admin@agrotranshandel.pl','[TESTOWY] Tucz '.$tucz["name_number"].' - przekroczono upadki',$msg);
+			}
+		}
+
 		if($mode == "adding" ){
 			$record['id_tuczu'] = $_SESSION['tucz_id'];
 			Epesi::js(

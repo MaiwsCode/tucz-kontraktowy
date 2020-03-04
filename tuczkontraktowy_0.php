@@ -1425,6 +1425,8 @@ class tuczkontraktowy extends Module {
             custom::addButton("kontrakty_upadki","Dodaj upadek","");
         }
         $rbo = new RBO_RecordsetAccessor("kontrakty_upadki");
+        $zalozenia = Utils_RecordBrowserCommon::get_records("kontrakty_zalozenia", array("id_tuczu" => $record['id']),array(),array());
+        foreach ($zalozenia as $zalozenie){$zalozenia = $zalozenie;break;}
         $inne = $rbo->get_records(array('id_tuczu' => $record['id']),array(),array('date_fall' => "ASC"));
         $gb = &$this->init_module('Utils/GenericBrowser', null, 'Upadki');
         $del_btn = "<img border='0' src='data/Base_Theme/templates/default/Utils/Calendar/delete.png' alt='Usuń' />";
@@ -1460,13 +1462,18 @@ class tuczkontraktowy extends Module {
 
             $sumKg += custom::change_spearator($p['weight_fall'],",",".");
             $sumDown += $p['amount_fall'];
-            $sumaKg = $sumaKg/$sumDown;
         }
+        $sumKg = $sumKg / $sumDown;
+        $sumKg = round($sumKg,2);
+        $percentFalls = $sumDown / $zalozenia['planned_amount'];
+        $percentFalls = $percentFalls * 100;
+        $percentFalls = round($percentFalls,2);
+        $percentFalls = custom::change_spearator($percentFalls,".",",");
         $bold = "<span style='font-size:14px;font-weight:bold;'> ";
         $boldEnd = "</span>";
         $gb->add_row(
             "",
-            "",
+            "$bold % upadków: ".$percentFalls. "% $boldEnd",
             "$bold Padło: ".$sumDown. " szt. $boldEnd",
             "$bold Średnia waga padłych: ".custom::change_spearator($sumKg,".",","). " kg $boldEnd",
             ""
@@ -2506,7 +2513,7 @@ class tuczkontraktowy extends Module {
         }
         $this->display_module($gb,array(true),'automatic_display');
     }
-    public function settings(){}    
+    public function settings(){ }    
     public function reports(){
         $hrefMonthView = "";
         $hrefTypeView = "";
