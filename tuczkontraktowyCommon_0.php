@@ -180,8 +180,10 @@ class tuczkontraktowyCommon extends ModuleCommon {
 			$falls = $falls / $zalozenia['planned_amount'] * 100;
 			$falls = round($falls,2);
 			if($falls > $alert){
+				$email = Utils_CommonDataCommon::get_array("Kontrakty/raporty"); 
+				$email = $email['email_upadki'];
 				$msg  = "Dla tuczu ".$tucz["name_number"]." przekroczono upadki.\nZakładano: ".$zalozenia['lose']."% - padło ".$falls."%";
-				Base_MailCommon::send('admin@agrotranshandel.pl','[TESTOWY] Tucz '.$tucz["name_number"].' - przekroczono upadki',$msg);
+				Base_MailCommon::send($email,'[UPADKI] Tucz '.$tucz["name_number"].' - przekroczono upadki',$msg);
 			}
 		}
 
