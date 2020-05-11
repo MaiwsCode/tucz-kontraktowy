@@ -158,7 +158,7 @@
         <h3 style='margin-right:5%;'>{$sprzedazPrice} zł</h3></div>
 
 
-    <h2> FAKTURY INNE </h2>
+    <h2> FAKTURY OBCE </h2>
     <table class='data-table'>
         <thead>
             <tr>

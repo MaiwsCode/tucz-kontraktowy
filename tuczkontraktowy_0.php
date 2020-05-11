@@ -950,19 +950,19 @@ class tuczkontraktowy extends Module {
         $min = $_SESSION['min'];
         $max = $_SESSION['max'];
         $form = $this->init_module('Libs/QuickForm');
-        eval_js("
-       document.onkeydown = function (e) {
-            if (e.which == 13) {
-             e.preventDefault();
-             var inputs = document.getElementsByClassName('pigCell');
-                for (var i = 0; i < inputs.length; i++) {
-                    if (document.activeElement == inputs[i]) {
-                        inputs[i+1].focus();
-                        break;   
+        epesi::js("
+            jq('.pigCell').keydown(function (e) {
+                if (e.which == 13) {
+                    e.preventDefault();
+                    var inputs = document.getElementsByClassName('pigCell');
+                    for (var i = 0; i < inputs.length; i++) {
+                        if (document.activeElement == inputs[i]) {
+                            inputs[i+1].focus();
+                            break;   
+                        }
                     }
                 }
-            }
-        };
+            });
         ");
         if($min) {
             $form->addElement('date', 'data', 'Data');
@@ -1061,6 +1061,9 @@ class tuczkontraktowy extends Module {
         $del_btn = "<img class='miniIcons' border='0' src='data/Base_Theme/templates/default/Utils/Calendar/delete.png' alt='Usuń' title='Usuń' />";
         $check_btn = "<img class='miniIcons' border='0' src='data/Base_Theme/templates/default/Utils/Watchdog/mark_as_read.png' alt='Rozlicz' title='Rozlicz' />";
         $edit_btn = "<img class='miniIcons' border='0' src='data/Base_Theme/templates/default/Utils/Calendar/edit.png' alt='Edytuj' title='Edytuj' />";
+        $deleteFarmer = "<!--<img class='miniIcons' border='0' src='data/Base_Theme/templates/default/Utils/Calendar/edit.png' alt='Edytuj' title='Edytuj' />-->";
+        $restore = "<img class='miniIcons' border='0' src='data/Base_Theme/templates/default/Utils/Attachment/restore.png' alt='Przywróć' title='Przywróć' />";
+
         $theme = $this->init_module('Base/Theme');
         $theme->assign("arrowUp",$arrowUp);
         $theme->assign("arrowDown",$arrowDown);
@@ -1093,9 +1096,7 @@ class tuczkontraktowy extends Module {
                 }
                 $part['value'] = $part->get_val("value");
             }
-
             $loan['remained'] = number_format($loan['remained'],2,',',' ');
-
             $loan['parts'] = $parts;
         }
         $theme->assign("loans",$loans);
@@ -1114,20 +1115,14 @@ class tuczkontraktowy extends Module {
             jq('.loan_$expand').css('display','flex');});
             ");
         }
-
-        
-
     }
 
     //zaliczki -> TUCZE
     public function advances($record){
         $_SESSION['advances'] = $record['id'];
         $rb = $this->init_module(Utils_RecordBrowser::module_name(),'kontrakty_advances','addon');
-
 		$this->display_module($rb, array(array('tucz'=> $record['id']), array(), array("payment_date" => "DESC")), 'show_data'); 
     }
-
-
 
     public function plan($record){
         $form = & $this->init_module('Libs/QuickForm'); 
@@ -1281,7 +1276,6 @@ class tuczkontraktowy extends Module {
             }else {
                 Utils_RecordBrowserCommon::new_record("kontrakty_zalozenia", $zal);
             }
-
         }
 
         Epesi::js('
@@ -1375,7 +1369,6 @@ class tuczkontraktowy extends Module {
             });
             calc();
         ');
-
     }
 
     public function limits_list($record){
@@ -1637,8 +1630,6 @@ class tuczkontraktowy extends Module {
 
         $sumPrice = number_format($sumPrice, 2,',',' ');
         $theme->assign("innePrice", $sumPrice);
-
-
         $theme->assign('faktury_zakupowe',$faktury_zakupowe);
         $theme->assign('faktury_transportowe',$faktury_transportowe);
         $theme->assign('faktury_sprzedazowe',$faktury_sprzedazowe);
@@ -1723,13 +1714,11 @@ class tuczkontraktowy extends Module {
             $details['iloscPadlych'] += $upadek['amount_fall'];
 
         }
+
         $details['paszeKg'] = 0;
         $details['paszePrice'] = 0;
-
         $cenaPaszy = custom::change_spearator($zalozenia["price_starter"],",",".");
-        
         $details['dateStart']  = $record['data_start'];
-
 
         foreach ($dostawy as $dostawa){
             $details['sumaWarchlakow'] += $dostawa['amount'];
@@ -2002,8 +1991,6 @@ class tuczkontraktowy extends Module {
                 Utils_RecordBrowserCommon::update_record("loans", $rec['parent'],
                 array('status' => '1', 'tucz' => $_REQUEST['tucz']) , false);
             }
-
-
         }
         $help = "<ul style='text-align:left;'>";
         $help .= "<li> W tym miejscu mamy wygenerowany raport dla rolinka. Należy pamiętać ze nie będzie on dobrze wyliczony 
@@ -2038,19 +2025,25 @@ class tuczkontraktowy extends Module {
             $i = 1;
             foreach($lns as $l){
                 $l['value'] = $l->get_val('value');
+                $l['date'] = strtotime($l['payment_deadline']);
                 $l['payment_deadline'] = $l->get_val('payment_deadline');
                 if($l['status'] == 0){
                     $l['href'] = $this->create_href(array("loan" => $l['id'],'tucz' => $record['id']));
                 }
-                $loansParts[$l['id']]['i'] = $i;
+                $loansParts[] = array(  'numberOf' => $i, 'value' => $l['value'] , 'date' => $l['date'],
+                                        'comments' => $loan['comments'], 'payment_deadline' => $l['payment_deadline'],
+                                        'href' => $l['href'], 'link' => $loan->record_link($loan['note']));
                 $i++;
-                $loansParts[$l['id']]['value'] = $l['value'];
+                /*$loansParts[]['value'] = $l['value'];
                 $loansParts[$l['id']]['comments'] = $loan['comments'];
                 $loansParts[$l['id']]['payment_deadline'] = $l['payment_deadline'];
                 $loansParts[$l['id']]['href'] = $l['href'];
-                $loansParts[$l['id']]['link'] = $loan->record_link($loan['note']);
+                $loansParts[$l['id']]['link'] = $loan->record_link($loan['note']);*/
             }
-    
+            usort($loansParts, function ($item1, $item2) {
+                if ($item1['date'] == $item2['date']) return 0;
+                return ($item1['date'] < $item2['date']) ? -1 : 1;
+            });
         }
 
         $theme->assign("loans", $loansParts);  
@@ -2077,18 +2070,13 @@ class tuczkontraktowy extends Module {
             ob_start();
             $theme->display('raport_rolnik_pdf');
             $table = ob_get_clean();
-
             $pdf->writeHTML($table);
             Base_ActionBarCommon::add('save',__('Download PDF'),'target="_blank" href="'.$pdf->get_href('pdf').'"');
- 
          }
-
-
         $theme->display('raport_rolnik');
     }
 
     public function raportSzefowaData($record){
-
         $zalozenia = Utils_RecordBrowserCommon::get_records("kontrakty_zalozenia", array("id_tuczu" => $record['id']),array(),array());
         foreach ($zalozenia as $zalozenie){$zalozenia = $zalozenie;break;}
         $dostawy = Utils_RecordBrowserCommon::get_records("kontrakty_faktury_dostawa_warchlaka" , array("id_tuczu" => $record['id']),array(),array());
@@ -2114,6 +2102,7 @@ class tuczkontraktowy extends Module {
         $details['transportedTucznikPrice'] = 0;
         $details['kosztyInne'];
         $details['suma']  = 0;
+
         foreach($dostawy as $dostawa){
             $details['sumaWarchlakow'] += $dostawa['amount'];
             $fvs = Utils_RecordBrowserCommon::get_records("kontrakty_faktury_pozycje" , array("id" => $dostawa['fakt_poz']),array(),array());
@@ -2121,9 +2110,11 @@ class tuczkontraktowy extends Module {
                 $details['kosztyWarchlaka'] += substr($fv['price'],0,-3);
             }
         }
+
         foreach($transports as $transport){
             $details['transportedPrice'] += custom::change_spearator($transport['netto'],",",".");
         }
+
         foreach($odbiory as $odbior){
             $fvs = Utils_RecordBrowserCommon::get_records("kontrakty_faktury_pozycje" , array("id" => $odbior['fakt_poz']),array(),array());
             foreach($fvs as $fv){
@@ -2133,9 +2124,11 @@ class tuczkontraktowy extends Module {
             $details['tucznikAmount'] += $odbior['amount'];
             $details['konfiskaty'] += $odbior['konfiskaty'];
         }
+
         foreach ($upadki as $upadek){
             $details['iloscPadlych'] += $upadek['amount_fall'];
         }
+
         foreach ($pasze as $pasza){
             $fvs = Utils_RecordBrowserCommon::get_records("kontrakty_faktury_pozycje" , array("id" => $pasza['fakt_poz']),array(),array());
             foreach($fvs as $fv){
@@ -2234,12 +2227,8 @@ class tuczkontraktowy extends Module {
                 "szefowa_notatka" =>  $valuesForm['szefowa_notatka']));
             }
         }
-
         $theme->assign("details", $this->raportSzefowaData($record));
         $theme->display("raport_szefowa");
-
-
-
     }
     public function deleteTucz($id){
         Utils_RecordBrowserCommon::delete_record("kontrakty", $id);
@@ -2471,6 +2460,7 @@ class tuczkontraktowy extends Module {
         Base_ThemeCommon::install_default_theme($this->get_type());
         Epesi::js('jq(".name").html("");
                  jq(".name").html("<div> Tucze kontraktowe </div>");');
+
         $gb =  $this->init_module('Utils/GenericBrowser',null, 'kontrakty');
         $gb->set_table_columns(
             array(
