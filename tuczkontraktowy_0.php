@@ -1161,6 +1161,15 @@ class tuczkontraktowy extends Module {
                     null,
                     $x
                 );
+                if(Base_AclCommon::i_am_sa() == "1" || Base_AclCommon::i_am_admin() == "1" ){
+                    Base_ActionBarCommon::add(
+                        'edit',
+                        __('Edycja limitów wag'),
+                        $this->create_callback_href([$this, 'setLimits'], [ $record['id'] ]  ),
+                        null,
+                        5
+                    );
+                }
             }else{
                 Base_ActionBarCommon::add(
                     'add',
@@ -1877,28 +1886,14 @@ class tuczkontraktowy extends Module {
             $details['weterynariaWartosc'] = custom::change_spearator($details['weterynariaCena'],",",".") -  $details['inne'] ;
             $details['weterynariaWartosc'] = $details['weterynariaWartosc'] * $details['pelnowartosciowe'];
         }
-
+        $waga = $details['srWagaTucznika'];
+        $wspolczynnik = $this->getBonus($waga, $zalozenia['weightslist']);
+        //getWspolczynnik
         if($zalozenia['deliverer'] == $record['farmer'] || $zalozenia['deliverer'] == $rolnik['parent_company'] ){
             $details['nfPrice'] = 0;
-            $waga = $details['srWagaTucznika'];
             $details['nf'] = true;
-            if($waga >= 126.1){
-                $wspolczynnik = 2.90;
-            }
-            else if($waga >= 122.10 && $waga <= 126.09){
-                $wspolczynnik = 2.85;
-            }
-            else if ($waga >= 118.10 && $waga <= 122.09){
-                $wspolczynnik = 2.80;
-            }
-            else if($waga >= 115.10 && $waga <= 118.09){
-                $wspolczynnik = 2.75;
-            }
-            else if($waga >= 110.10 && $waga <= 115.09){
-                $wspolczynnik = 2.70;
-            }else if($waga < 110.1) {
-                $wspolczynnik = 2.70;
-            }
+           
+            
             $details['nfPrice'] = custom::change_spearator($details['przyrost'],",",".") * $wspolczynnik *  custom::change_spearator($cenaPaszy,",",".");
             $details['nfPrice'] = round($details['nfPrice'],2);
             $details['suma'] += $details['nfPrice'];
@@ -1906,25 +1901,6 @@ class tuczkontraktowy extends Module {
         }else{
             $premia = 0;
             $details['nfPrice'] = 0;
-            $waga = $details['srWagaTucznika'];
-            $wspolczynnik = 0;
-            if($waga >= 126.10){
-                $wspolczynnik = 2.90;
-            }
-            else if($waga >= 122.10 && $waga <= 126.09){
-                $wspolczynnik = 2.85;
-            }
-            else if ($waga >= 118.10 && $waga <= 122.09){
-                $wspolczynnik = 2.80;
-            }
-            else if($waga >= 115.10 && $waga <= 118.09){
-                $wspolczynnik = 2.75;
-            }
-            else if($waga >= 110.10 && $waga <= 115.09){
-                $wspolczynnik = 2.70;
-            }else if($waga < 110.10) {
-                $wspolczynnik = 2.70;
-            }
             $details['nf'] = false;
             $avg = $wspolczynnik - $srZuzycie;
             if($avg > 0){
@@ -2347,13 +2323,57 @@ class tuczkontraktowy extends Module {
         });");
     }
 
+    public function getBonus($weight, $weightArray){
+        $premie = json_decode($weightArray, true);
+        foreach($premie as $premia) {
+            $stringToParse = $premia['v'];
+            $values = explode(";",$stringToParse);
+            $valueLeft = $values[0];
+            $valueRight = $values[1];
+            $value1 = explode("_", $valueLeft);
+            $value2 = explode("_", $valueRight);
+
+           if($value1[1] && $value2[1]) {
+                if($weight >= $value1[1] && $weight <= $value2[1]){
+                    return $premia['m'];
+                break;
+                }
+            }
+            else if($value1[1] && $value1[0] == "gt") {
+                if($weight > $value1[1] ){
+                    return $premia['m'];
+                break;
+                }
+            }
+            else if($value1[1] && $value1[0] == "lt") {
+                if($weight < $value1[1] ){
+                    return $premia['m'];
+                    break;
+                }
+            }
+            else if($value1[1] && $value1[0] == "lte") {
+                if($weight <= $value1[1] ){
+                    return $premia['m'];
+                    break;
+                }
+            }
+            else if($value1[1] && $value1[0] == "gte") {
+                if($weight >= $value1[1] ){
+                    return $premia['m'];
+                    break;
+                }
+            }
+        }
+    }
+
     public function body(){
 		$tabbed_browser = $this->init_module('Utils/TabbedBrowser');
 		$tabbed_browser->set_tab(__('Tucze'), array($this, 'main'));
         $tabbed_browser->set_tab(__('Zestawienie'), array($this, 'reports'));
         $tabbed_browser->set_tab(__('Raport z tuczy'), array($this, 'analise'));
-		$this->display_module($tabbed_browser);
+        $this->display_module($tabbed_browser);
     }
+
     public function setStatus($val){
         if($val == "" || strlen($val) == 0){
             return "checked";
@@ -2362,6 +2382,18 @@ class tuczkontraktowy extends Module {
             return "";
         }
     }
+
+    public function setLimits($tuczId = null){
+        Base_ThemeCommon::install_default_theme($this->get_type());
+        $fields = tuczkontraktowyCommon::editLimits($tuczId);
+        $theme = $this->init_module('Base/Theme');
+        $theme->assign("limits", $fields);   
+        $theme->assign("tucz", $tuczId);   
+        $theme->display("editLimits");
+        load_js($this->get_module_dir().'theme/limits.js');
+        epesi::js('setElements(jQuery);');
+    }
+
     public function main(){
         $fcallback = array('tuczkontraktowyCommon','fv_format');
 
@@ -2503,7 +2535,7 @@ class tuczkontraktowy extends Module {
         }
         $this->display_module($gb,array(true),'automatic_display');
     }
-    public function settings(){ }    
+
     public function reports(){
         $hrefMonthView = "";
         $hrefTypeView = "";

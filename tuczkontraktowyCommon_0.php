@@ -16,7 +16,13 @@ class tuczkontraktowyCommon extends ModuleCommon {
 	}
 	public static function tuczeTabViewLabel() {
         return array('label' => 'Tucze', 'show' => true);
+	}
+	
+	public static function user_settings()
+    {
+        return array(__('weights limit') => 'setLimits');
     }
+
 
 	public static function critDates() {
 		$date_start = date("Y-m-d");
@@ -25,6 +31,65 @@ class tuczkontraktowyCommon extends ModuleCommon {
 
 
     	return array('>=planed_purchase_date' => $newdate);
+	}
+
+	public static function editLimits($tuczId){
+		if($tuczId){
+			$planRbo = new RBO_RecordsetAccessor("kontrakty_zalozenia");
+			$plan = $planRbo->get_records(['id_tuczu' => $tuczId], [], []);
+			foreach ($plan as $p){ $plan = $p; break; }
+			$premieArray = json_decode($plan['weightslist'], true);
+		}else{
+			$premie = Utils_CommonDataCommon::get_array("/Kontrakty/premia");
+			$premieArray = [];
+			foreach($premie as $key => $value){
+				$multipler = Utils_CommonDataCommon::get_array("/Kontrakty/premia/" . $key)[$key];
+				$premieArray[] = array('v' => $value , 'm' => $multipler);
+			}	
+		}	
+		$translate = [
+			'gt' => "Większe niż",
+			'gte' => 'Większe niż lub równe',
+			'lt' => "Mniejsze niż",
+			'lte' => 'Mniejsze niż lub równe',
+		];
+		$fields = [];
+        foreach($premieArray as $key => $premia) {
+            $stringToParse = $premia['v'];
+            $values = explode(";",$stringToParse);
+            $valueLeft = $values[0];
+            $valueRight = $values[1];
+            $value1 = explode("_", $valueLeft);
+			$value2 = explode("_", $valueRight);
+			$fields[$key][] = [
+				'id' => $key,
+				'prefix' => "L",
+				'value' => $value1[1],
+				'operator' => $value1[0],
+				'textOperator' => $translate[$value1[0]],
+				'multipler' => $premia['m'],
+			];
+			if( $value2[0] ){
+				$fields[$key][] = [
+					'id' => $key,
+					'prefix' => "R",
+					'value' => $value2[1],
+					'operator' => $value2[0],
+					'textOperator' => $translate[$value2[0]],
+					'multipler' => $premia['m'],
+				];
+			}
+		}
+		for ($i = 0; $i < count($fields); $i++ ) {
+			for( $j = 0; $j < count($fields); $j++){
+				if($fields[$i][0]['value'] > $fields[$j][0]['value']){
+					$tmp = $fields[$i];
+					$fields[$i] = $fields[$j];
+					$fields[$j] = $tmp;
+				}
+			}
+		}
+		return $fields;
 	}
   
 	public static function automulti_search($arg) {
@@ -213,6 +278,15 @@ class tuczkontraktowyCommon extends ModuleCommon {
 			$form->freeze(array($field));
         }
 	}
+
+	public static function QFfield_weightsList(&$form, $field, $label, $mode, $default, $desc, $rb_obj) {
+		if($mode == 'view'){
+			Utils_RecordBrowserCommon::QFfield_long_text($form, $field, $label, $mode, $default, $desc, $rb_obj);
+		}
+		if($mode == 'edit' || $mode == 'add'){
+			Utils_RecordBrowserCommon::QFfield_hidden($form, $field, $label, $mode, $default, $desc, $rb_obj);
+		}
+	}
 	
 	public static function QFfield_company(&$form, $field, $label, $mode, $default, $desc, $rb_obj) {
         Utils_RecordBrowserCommon::QFfield_select($form, $field, $label, $mode, $default, $desc, $rb_obj);
@@ -361,16 +435,30 @@ class tuczkontraktowyCommon extends ModuleCommon {
 			Epesi::js('jq(".name").html("");
 			jq(".name").html("<div> Edytowanie danych do tuczu </div>");');	
 			return $record;
-	}
+		}
 	}
 	public static function view_zalozenia($record,$mode){
 		if($mode == "editing" || $mode == 'adding'){
 			$tucz_name = Utils_RecordBrowserCommon::get_record('kontrakty', $_SESSION['tucz_id']);
 			$def = Utils_CommonDataCommon::get_array("Kontrakty/zalozenia_domyslne");			
 			$feed = Utils_CommonDataCommon::get_array("Kontrakty/limity_tuczu_na_paszy");	
+
 			Epesi::js('jq(".name").html("");
 			jq(".name").html("<div> Dane do założeń tuczu - '.$tucz_name['name_number'].'</div>");');
 			$record['id_tuczu'] = $_SESSION['tucz_id'];
+			
+			if($record['weightslist'] == null) {
+				$premie = Utils_CommonDataCommon::get_array("/Kontrakty/premia");
+				$premieArray = [];
+				foreach($premie as $key => $value){
+					$multipler = Utils_CommonDataCommon::get_array("/Kontrakty/premia/" . $key)[$key];
+					$premieArray[] = array('v' => $value , 'm' => $multipler);
+				}
+							
+				$weightArray = json_encode($premieArray);
+				$record['weightslist'] = $weightArray;
+			}
+
 			if($record['farmer'] == null){
 				$record['farmer'] = $def['rolnik']."__2";
 			}
@@ -480,7 +568,14 @@ class tuczkontraktowyCommon extends ModuleCommon {
                 $enter_value = preg_replace("/[^0-9 , . ]/", '', $enter_value);
                 $p3 = $enter_value;
 			}
-			Utils_RecordBrowserCommon::update_record('kontrakty_zalozenia', $record['id'], array('price_starter' => $p1, 'price_grower' => $p2 , 'price_finisher' => $p3), $full_update=false, $date=null, $dont_notify=false);
+			
+			Utils_RecordBrowserCommon::update_record('kontrakty_zalozenia', $record['id'], 
+				[
+					'price_starter' =>  $p1,
+					'price_grower' =>   $p2,
+					'price_finisher' => $p3,
+				],
+			 	$full_update = false, $date = null, $dont_notify = false);
 		}
 	}
 	public static function view_transporty($record,$mode){

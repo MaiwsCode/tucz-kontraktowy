@@ -79,6 +79,7 @@ $translations['value']=  'Kwota';
 $translations['note']=  'Opis';
 $translations['tucz']=  'Tucz rozliczenia';
 $translations['payment_date']=  'Data przekazania pieniędzy';
+$translations['weights limit']=  'Limit wag';
 
 
 ?>
